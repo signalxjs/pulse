@@ -8,8 +8,7 @@
 import express from 'express';
 import { createLiveClient, createFixturesClient, createSqliteEtagCache } from '@pulse/github';
 
-export function createGitHubApi({ dbPath, getSession } = {}) {
-    const fixtures = process.env.PULSE_FIXTURES === '1' || (!process.env.GITHUB_TOKEN && !process.env.PULSE_OAUTH_CLIENT_ID);
+export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     const etagCache = createSqliteEtagCache(dbPath);
     const fallback = fixtures
         ? createFixturesClient()
@@ -68,7 +67,7 @@ export function createGitHubApi({ dbPath, getSession } = {}) {
     api.get('/owners/:owner/repos', route((req, gh) => gh.ownerRepos(req.params.owner)));
     api.get('/repos/:owner/:name', route((req, gh) => gh.repo(req.params.owner, req.params.name)));
 
-    return { api, fixtures, makeClient: (token) => (token === 'fixtures' || fixtures)
+    return { api, makeClient: (token) => (token === 'fixtures' || fixtures)
         ? createFixturesClient()
         : createLiveClient({ token, etagCache }) };
 }

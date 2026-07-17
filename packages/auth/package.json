@@ -18,5 +18,8 @@
     "dependencies": {
         "express": "^5.2.1",
         "@pulse/github": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.6"
     }
 }

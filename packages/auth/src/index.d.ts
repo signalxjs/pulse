@@ -21,7 +21,7 @@ export interface SessionStore {
 }
 
 /** node:sqlite-backed session store; tokens encrypted at rest (AES-256-GCM). */
-export function createSessionStore(options: { dbPath?: string; secret: string }): SessionStore;
+export function createSessionStore(options: { dbPath?: string; secret: string; ttlMs?: number }): SessionStore;
 
 export interface AuthRouterOptions {
     sessions: SessionStore;

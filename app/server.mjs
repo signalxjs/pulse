@@ -30,13 +30,20 @@ async function createServer() {
     const dbPath = process.env.PULSE_DB || ':memory:';
 
     const sessions = createSessionStore({ dbPath, secret });
-    const { api, fixtures, makeClient } = createGitHubApi({
-        dbPath,
-        getSession: (req) => getSession(req, sessions, secret)
-    });
+    // OAuth needs BOTH credentials; the fixtures decision keys off the SAME
+    // resolution so a half-configured OAuth app can't silently flip modes.
     const oauth = process.env.PULSE_OAUTH_CLIENT_ID && process.env.PULSE_OAUTH_CLIENT_SECRET
         ? { clientId: process.env.PULSE_OAUTH_CLIENT_ID, clientSecret: process.env.PULSE_OAUTH_CLIENT_SECRET }
         : undefined;
+    if (process.env.PULSE_OAUTH_CLIENT_ID && !oauth) {
+        console.warn('[pulse] PULSE_OAUTH_CLIENT_ID is set without PULSE_OAUTH_CLIENT_SECRET — OAuth disabled.');
+    }
+    const fixtures = process.env.PULSE_FIXTURES === '1' || (!process.env.GITHUB_TOKEN && !oauth);
+    const { api, makeClient } = createGitHubApi({
+        dbPath,
+        fixtures,
+        getSession: (req) => getSession(req, sessions, secret)
+    });
 
     app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient, oauth }));
     app.use('/api/github', api);

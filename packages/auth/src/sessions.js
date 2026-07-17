@@ -38,8 +38,11 @@ function decrypt(key, payload) {
     return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf-8');
 }
 
+/** Sessions older than this are dead server-side (matches the cookie's Max-Age). */
+const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 /**
- * @param {{ dbPath?: string, secret: string }} options
+ * @param {{ dbPath?: string, secret: string, ttlMs?: number }} options
  * @returns {import('./index.js').SessionStore}
  */
 export function createSessionStore(options) {
@@ -58,9 +61,11 @@ export function createSessionStore(options) {
             created_at INTEGER NOT NULL
         )
     `);
+    const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     const insert = db.prepare('INSERT INTO sessions (sid, token_enc, login, name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)');
     const select = db.prepare('SELECT * FROM sessions WHERE sid = ?');
     const remove = db.prepare('DELETE FROM sessions WHERE sid = ?');
+    const sweep = db.prepare('DELETE FROM sessions WHERE created_at < ?');
 
     return {
         create(user, token) {
@@ -71,6 +76,14 @@ export function createSessionStore(options) {
         get(sid) {
             const row = /** @type {any} */ (select.get(sid));
             if (!row) return null;
+            // Server-side TTL: a replayed signed cookie dies with the row —
+            // the cookie's Max-Age alone is client-enforced only. Expiry
+            // also sweeps other stale rows so the table can't grow without
+            // bound under sign-in-and-forget usage.
+            if (Date.now() - row.created_at > ttlMs) {
+                sweep.run(Date.now() - ttlMs);
+                return null;
+            }
             return {
                 sid,
                 user: { login: row.login, name: row.name ?? null, avatarUrl: row.avatar_url },
