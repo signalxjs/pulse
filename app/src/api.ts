@@ -31,9 +31,12 @@ export interface PulseApi {
     repo(owner: string, name: string): Promise<PulseRepo | null>;
 }
 
-export const usePulseApi = defineInjectable<PulseApi>(() => {
-    throw new Error('usePulseApi() called without a provider — each entry provides its environment implementation.');
-});
+// Required injectable (sigx 0.10 / core#213): no singleton fallback — a
+// lookup miss throws a named SIGX202 instead of silently minting a
+// process-global instance shared across SSR requests. Each entry provides
+// its environment implementation (server: per-request GitHub client;
+// client: /api/github fetch wrappers).
+export const usePulseApi = defineInjectable<PulseApi>('PulseApi');
 
 /** The client-side implementation: same-origin /api/github endpoints. */
 export class PulseApiError extends Error {
