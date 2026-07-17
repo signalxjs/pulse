@@ -24,6 +24,9 @@ function safeReturnTo(value) {
     if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/';
     // eslint-disable-next-line no-control-regex
     if (/[\u0000-\u001f\u007f]/.test(value)) return '/';
+    // The value rides inside the signed state cookie and a Location header —
+    // bound it well under common 4-8 KB header limits.
+    if (value.length > 1024) return '/';
     return value;
 }
 
@@ -36,8 +39,11 @@ function safeReturnTo(value) {
 function sameOrigin(req) {
     const origin = req.headers.origin;
     if (!origin) return true;
+    const host = req.headers.host;
+    if (!host) return false;
     try {
-        return new URL(origin).host === req.headers.host;
+        // Hostnames are case-insensitive.
+        return new URL(origin).host.toLowerCase() === host.toLowerCase();
     } catch {
         return false;
     }
