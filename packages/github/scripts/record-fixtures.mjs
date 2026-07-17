@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createLiveClient } from '../src/live.js';
+import { createLiveClient } from '../src/index.js';
 
 const token = process.env.GITHUB_TOKEN;
 if (!token) {
