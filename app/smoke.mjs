@@ -101,12 +101,14 @@ try {
     await page.goto(`${BASE}/login`, { waitUntil: 'load' });
     let docRequests = 0;
     page.on('request', (r) => { if (r.resourceType() === 'document') docRequests++; });
+    await page.waitForSelector('text=go to the dashboard', { timeout: 10000 });
     await page.click('text=go to the dashboard');
     await page.waitForURL(`${BASE}/`, { timeout: 10000 });
     await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });
     assert(docRequests === 0, 'Link navigation to the dashboard stays client-side (URL changed, 0 document requests)');
 
     // 6) Sign out round-trip.
+    await page.waitForSelector('text=Sign out', { timeout: 10000 });
     await page.click('text=Sign out');
     await page.waitForURL('**/login**', { timeout: 10000 });
     assert(true, 'sign out returns to /login');

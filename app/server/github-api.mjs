@@ -28,7 +28,8 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
         if (session) {
             // The mode gates the shortcut — in LIVE mode a literal
             // 'fixtures' token is just an (invalid) PAT, never a bypass.
-            if (fixtures) return createFixturesClient();
+            // (fallback IS the shared fixtures client in fixtures mode.)
+            if (fixtures) return fallback;
             return createLiveClient({ token: session.token, etagCache });
         }
         return fallback;
