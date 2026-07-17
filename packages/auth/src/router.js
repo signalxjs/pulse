@@ -188,6 +188,7 @@ export function createAuthRouter(options) {
  * @returns {import('./index.js').Session | null}
  */
 export function getSession(req, sessions, secret) {
+    if (!secret) throw new Error('getSession: a secret is required — an empty secret makes cookies forgeable');
     const sid = verify(readCookie(req, SESSION_COOKIE), secret);
     return sid ? sessions.get(sid) : null;
 }
