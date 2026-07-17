@@ -60,13 +60,23 @@ export const Login = component((ctx) => {
                         </p>
                     ) : (
                         <>
-                            <a
-                                class="btn btn-primary w-full"
-                                href={`/auth/login?returnTo=${encodeURIComponent(returnTo())}`}
-                            >
-                                Continue with GitHub
-                            </a>
-                            <div class="divider text-xs opacity-60">or use a token</div>
+                            {/* ?pat=1 = the server told us OAuth isn't
+                                configured — the OAuth button would bounce
+                                straight back here. */}
+                            {query.pat !== '1' && (
+                                <>
+                                    <a
+                                        class="btn btn-primary w-full"
+                                        href={`/auth/login?returnTo=${encodeURIComponent(returnTo())}`}
+                                    >
+                                        Continue with GitHub
+                                    </a>
+                                    <div class="divider text-xs opacity-60">or use a token</div>
+                                </>
+                            )}
+                            {query.pat === '1' && (
+                                <p class="text-xs opacity-60">OAuth isn't configured on this server — sign in with a token.</p>
+                            )}
                             <form class="w-full space-y-2" onSubmit={signInWithPat}>
                                 {/* Two-way: the sigx vite transform compiles
                                     the model getter into a get/set pair —

@@ -9,7 +9,8 @@ import express from 'express';
 import { createLiveClient, createFixturesClient, createSqliteEtagCache } from '@pulse/github';
 
 export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
-    const etagCache = createSqliteEtagCache(dbPath);
+    // Fixtures mode never talks to GitHub — no ETag cache to keep.
+    const etagCache = fixtures ? null : createSqliteEtagCache(dbPath);
     const fallback = fixtures
         ? createFixturesClient()
         : (process.env.GITHUB_TOKEN
@@ -24,7 +25,7 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
      */
     const clientFor = (req) => {
         const session = getSession?.(req);
-        if (session && session.token !== 'fixtures') {
+        if (session && session.token !== 'fixtures' && etagCache) {
             return createLiveClient({ token: session.token, etagCache });
         }
         if (session && session.token === 'fixtures') {
