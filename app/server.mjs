@@ -3,13 +3,21 @@
 // pattern from sigx core's rfc-ssr-platform §3.3). Run production with
 // `--conditions production` for the NODE_ENV-stripped dists.
 import express from 'express';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { createSessionStore, createAuthRouter, getSession } from '@pulse/auth';
+import { createGitHubApi } from './server/github-api.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT) || 3000;
+
+const secret = process.env.PULSE_SECRET ?? 'pulse-dev-secret-do-not-use-in-production';
+if (isProd && !process.env.PULSE_SECRET) {
+    console.warn('[pulse] WARNING: PULSE_SECRET is not set — sessions are signed with the well-known dev secret.');
+}
 
 // Crawlers and AI agents get the blocking document: complete content
 // inline, nothing for the client to execute.
@@ -17,15 +25,22 @@ const isBot = (ua) => /bot|crawl|spider|slurp|gptbot|claudebot|perplexity|headle
 
 async function createServer() {
     const app = express();
+    const dbPath = process.env.PULSE_DB || ':memory:';
 
-    // GitHub proxy — shared by dev and prod; adapter chosen by env (see
-    // app/server/github-api.mjs).
-    const { createGitHubApi } = await import('./server/github-api.mjs');
-    const { api, fixtures } = createGitHubApi({
-        dbPath: process.env.PULSE_DB || ':memory:'
+    const sessions = createSessionStore({ dbPath, secret });
+    const { api, fixtures, makeClient } = createGitHubApi({
+        dbPath,
+        getSession: (req) => getSession(req, sessions, secret)
     });
+    const oauth = process.env.PULSE_OAUTH_CLIENT_ID && process.env.PULSE_OAUTH_CLIENT_SECRET
+        ? { clientId: process.env.PULSE_OAUTH_CLIENT_ID, clientSecret: process.env.PULSE_OAUTH_CLIENT_SECRET }
+        : undefined;
+
+    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient, oauth }));
     app.use('/api/github', api);
-    console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}`);
+    console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
+
+    const sessionUser = (req) => getSession(req, sessions, secret)?.user ?? null;
 
     if (!isProd) {
         const { createServer: createViteServer } = await import('vite');
@@ -37,10 +52,17 @@ async function createServer() {
             appType: 'custom'
         });
         app.use(vite.middlewares);
-        app.use(await createDevRequestHandler(vite, {
+        const handler = await createDevRequestHandler(vite, {
             entry: '/src/entry-server.tsx',
             isBot
-        }));
+        });
+        // createDevRequestHandler invokes the app factory as factory(url) —
+        // req never reaches it (core#304). Bridge the session through
+        // AsyncLocalStorage until the fix ships; entry-server reads
+        // globalThis.__PULSE_DEV_SESSION__.
+        const als = new AsyncLocalStorage();
+        globalThis.__PULSE_DEV_SESSION__ = () => als.getStore() ?? null;
+        app.use((req, res, next) => als.run(sessionUser(req), () => handler(req, res, next)));
     } else {
         const { createRequestHandler } = await import('@sigx/server-renderer/node');
         const { collectAssets } = await import('@sigx/vite/ssr');
@@ -57,7 +79,9 @@ async function createServer() {
         app.use(express.static(clientDir, { index: false }));
         app.use(createRequestHandler({
             template,
-            app: (url) => createApp(url),
+            // The factory's second parameter is this request's signed-in
+            // user — prod passes it directly (router-SSR contract §1).
+            app: (url, req) => createApp(url, sessionUser(req)),
             isBot,
             document: {
                 // Route-chunk preloads (contract §2) join here once routes
