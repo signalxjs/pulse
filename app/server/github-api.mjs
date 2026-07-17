@@ -17,7 +17,12 @@ export function createGitHubApi({ dbPath, getSession } = {}) {
             ? createLiveClient({ token: process.env.GITHUB_TOKEN, etagCache })
             : null);
 
-    /** Client for one request: session token > env fallback > fixtures. */
+    /**
+     * Client for one request: session token > env fallback. In a live setup
+     * (OAuth configured, no env token) an unauthenticated request gets NO
+     * client — the route layer answers 401 instead of silently serving
+     * fixtures data.
+     */
     const clientFor = (req) => {
         const session = getSession?.(req);
         if (session && session.token !== 'fixtures') {
@@ -26,7 +31,7 @@ export function createGitHubApi({ dbPath, getSession } = {}) {
         if (session && session.token === 'fixtures') {
             return createFixturesClient();
         }
-        return fallback ?? createFixturesClient();
+        return fallback;
     };
 
     const api = express.Router();
@@ -34,7 +39,12 @@ export function createGitHubApi({ dbPath, getSession } = {}) {
     /** Wrap a handler: JSON result, GitHub errors mapped to real statuses. */
     const route = (fn) => async (req, res) => {
         try {
-            const data = await fn(req, clientFor(req));
+            const client = clientFor(req);
+            if (!client) {
+                res.status(401).json({ error: 'sign in required' });
+                return;
+            }
+            const data = await fn(req, client);
             if (data === null) {
                 res.status(404).json({ error: 'not found' });
                 return;

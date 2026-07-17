@@ -14,10 +14,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT) || 3000;
 
-const secret = process.env.PULSE_SECRET ?? 'pulse-dev-secret-do-not-use-in-production';
 if (isProd && !process.env.PULSE_SECRET) {
-    console.warn('[pulse] WARNING: PULSE_SECRET is not set — sessions are signed with the well-known dev secret.');
+    // A well-known secret makes every session forgeable — refuse to serve.
+    console.error('[pulse] PULSE_SECRET is required in production (sessions are signed and encrypted with it).');
+    process.exit(1);
 }
+const secret = process.env.PULSE_SECRET ?? 'pulse-dev-secret-do-not-use-in-production';
 
 // Crawlers and AI agents get the blocking document: complete content
 // inline, nothing for the client to execute.

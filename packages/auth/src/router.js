@@ -15,9 +15,15 @@ import { sign, verify, readCookie, cookieHeader, SESSION_COOKIE, STATE_COOKIE } 
 const GITHUB_AUTHORIZE = 'https://github.com/login/oauth/authorize';
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
-/** Same-origin relative paths only — an absolute returnTo is an open redirect. */
+/**
+ * Same-origin relative paths only — an absolute returnTo is an open
+ * redirect, and control characters (CR/LF) would throw inside
+ * res.redirect() when the value round-trips through the state cookie.
+ */
 function safeReturnTo(value) {
     if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/';
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f\u007f]/.test(value)) return '/';
     return value;
 }
 
