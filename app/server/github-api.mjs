@@ -68,7 +68,11 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     api.get('/owners/:owner/repos', route((req, gh) => gh.ownerRepos(req.params.owner)));
     api.get('/repos/:owner/:name', route((req, gh) => gh.repo(req.params.owner, req.params.name)));
 
-    return { api, makeClient: (token) => (token === 'fixtures' || fixtures)
-        ? createFixturesClient()
-        : createLiveClient({ token, etagCache }) };
+    return {
+        api,
+        clientFor,
+        makeClient: (token) => (token === 'fixtures' || fixtures)
+            ? createFixturesClient()
+            : createLiveClient({ token, etagCache })
+    };
 }

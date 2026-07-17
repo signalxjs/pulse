@@ -2,9 +2,16 @@ import { defineApp } from 'sigx';
 import { cachePlugin } from '@sigx/cache';
 import { App } from './App';
 import { createServerRouter } from './routes';
-import { useSessionStore } from './stores/session';
-import type { SessionUser } from './session';
+import { usePulseApi, type PulseApi } from './api';
+import { useRequestUser, type SessionUser } from './session';
 import './styles.css';
+
+/** Everything the server resolves per request before the render. */
+export interface RequestContext {
+    user: SessionUser | null;
+    /** The per-request GitHub client wrapped as the PulseApi seam. */
+    api: PulseApi | null;
+}
 
 /**
  * The per-request app factory (the entry contract — core
@@ -18,15 +25,19 @@ import './styles.css';
  * NOTE: the dev handler currently drops the second argument (core#304) —
  * server.mjs carries an AsyncLocalStorage workaround until that ships.
  */
-export async function createApp(url: string, user: SessionUser | null = null) {
+export async function createApp(url: string, ctx: RequestContext | null = null) {
     const app = defineApp(<App />);
     app.use(cachePlugin());
 
-    // Seed the session store for THIS request before any guard runs. The
-    // store transfers to the client via ssrState (store:session slice).
-    app.runWithContext(() => {
-        useSessionStore().setUser(user ?? globalThis.__PULSE_DEV_SESSION__?.() ?? null);
-    });
+    const resolved = ctx ?? globalThis.__PULSE_DEV_CTX__?.() ?? null;
+
+    // The request's user travels via DI: the guard reads it pre-render, and
+    // App's setup seeds the session store INSIDE component resolution — the
+    // only place ssrState can register the transfer slice (store#63).
+    app.defineProvide(useRequestUser, () => resolved?.user ?? null);
+    if (resolved?.api) {
+        app.defineProvide(usePulseApi, () => resolved.api!);
+    }
 
     const router = createServerRouter(url);
     app.use(router);

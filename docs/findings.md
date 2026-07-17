@@ -70,6 +70,15 @@ Bit twice: `env.d.ts` (CSS-module ambient declaration) silently untracked
 → local-green/CI-red; then an entire JSDoc-typed server package's `src/*.js`
 missing from a PR. Negations must be placed AFTER the blanket patterns.
 
+### F10 — ssrState silently no-ops for stores first created outside component resolution (R3 · store#63)
+The auth guard resolved the session store before the render; the store's
+`ssrState` needs `instance.ssr._ctx` (a component being resolved) and
+silently skipped registration — the client hydrated signed-OUT with no
+warning. Pattern that works (now in Pulse): pre-render consumers (guards)
+read request state via a DI injectable; the store is first touched in the
+root component's setup, where the transfer can register. The store should
+dev-warn in the no-instance server case.
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first

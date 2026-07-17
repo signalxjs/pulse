@@ -3,12 +3,14 @@ import { cachePlugin } from '@sigx/cache';
 import { ssrClientPlugin } from '@sigx/server-renderer/client';
 import { App } from './App';
 import { createClientRouter } from './routes';
+import { usePulseApi, createFetchApi } from './api';
 import './styles.css';
 
 // One app + router for the page, initialised from the current URL so the
 // first client render matches the server's HTML.
 const app = defineApp(<App />);
 app.use(cachePlugin());
+app.defineProvide(usePulseApi, () => createFetchApi());
 const router = createClientRouter();
 app.use(router);
 

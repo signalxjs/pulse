@@ -7,6 +7,7 @@
 import { createRouter, createWebHistory, createMemoryHistory } from '@sigx/router';
 import type { Router } from '@sigx/router';
 import { useSessionStore } from './stores/session';
+import { useRequestUser } from './session';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 
@@ -24,8 +25,12 @@ export const routes = [
  * (see App.tsx). */
 function attachGuards(router: Router): Router {
     router.beforeEach((to) => {
-        const session = useSessionStore();
-        if (to.meta?.requiresAuth && !session.user) {
+        if (!to.meta?.requiresAuth) return;
+        // Server: the request user rides DI (reading the STORE here would
+        // create it outside component resolution and kill its ssrState
+        // registration — store#63). Client: the store, seeded from the blob.
+        const user = useRequestUser() ?? useSessionStore().user;
+        if (!user) {
             return `/login?returnTo=${encodeURIComponent(to.fullPath)}`;
         }
     });
