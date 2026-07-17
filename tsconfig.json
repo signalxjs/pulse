@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "verbatimModuleSyntax": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "jsxImportSource": "sigx",
+        "types": ["node"],
+        "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    },
+    "include": ["app/src", "packages/*/src", "packages/*/__tests__", "app/__tests__"]
+}
