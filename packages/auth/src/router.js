@@ -36,14 +36,18 @@ function safeReturnTo(value) {
  * Origin (curl, server-to-server, some same-origin cases) pass.
  * @param {import('express').Request} req
  */
+/** Drop explicit default ports so 'example.com:443' == 'example.com'. */
+function normalizeHost(host) {
+    return host.toLowerCase().replace(/:(443|80)$/, '');
+}
+
 function sameOrigin(req) {
     const origin = req.headers.origin;
     if (!origin) return true;
     const host = req.headers.host;
     if (!host) return false;
     try {
-        // Hostnames are case-insensitive.
-        return new URL(origin).host.toLowerCase() === host.toLowerCase();
+        return normalizeHost(new URL(origin).host) === normalizeHost(host);
     } catch {
         return false;
     }

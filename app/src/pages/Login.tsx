@@ -20,7 +20,7 @@ export const Login = component((ctx) => {
         const target = typeof value === 'string' ? value : '/';
         // Mirror the server's safeReturnTo: relative-only, no control chars.
         // eslint-disable-next-line no-control-regex
-        if (!target.startsWith('/') || target.startsWith('//') || /[\u0000-\u001f\u007f]/.test(target)) {
+        if (!target.startsWith('/') || target.startsWith('//') || /[\u0000-\u001f\u007f]/.test(target) || target.length > 1024) {
             return '/';
         }
         return target;

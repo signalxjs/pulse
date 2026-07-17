@@ -38,7 +38,10 @@ async function createServer() {
     if (process.env.PULSE_OAUTH_CLIENT_ID && !oauth) {
         console.warn('[pulse] PULSE_OAUTH_CLIENT_ID is set without PULSE_OAUTH_CLIENT_SECRET — OAuth disabled.');
     }
-    const fixtures = process.env.PULSE_FIXTURES === '1' || (!process.env.GITHUB_TOKEN && !oauth);
+    // Fixtures is EXPLICIT-only: a bare server with neither token nor OAuth
+    // is live PAT-only — a real user's PAT must reach real GitHub, never be
+    // silently swallowed by fixtures. CI smokes set PULSE_FIXTURES=1.
+    const fixtures = process.env.PULSE_FIXTURES === '1';
     const { api, makeClient } = createGitHubApi({
         dbPath,
         fixtures,
