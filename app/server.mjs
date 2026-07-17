@@ -53,7 +53,10 @@ async function createServer() {
     console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
 
     // Per-request SSR context: the signed-in user + a PulseApi over the
-    // request's GitHub client (session token > env fallback; null = 401s).
+    // request's GitHub client (session token > env fallback). When
+    // clientFor() is null (live setup, unauthenticated), /api/github
+    // answers 401 and the SSR entry provides NO PulseApi — the auth guard
+    // redirects before any page could reach for it.
     const requestCtx = (req) => {
         const user = getSession(req, sessions, secret)?.user ?? null;
         const gh = clientFor(req);

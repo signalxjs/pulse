@@ -21,8 +21,9 @@ export interface RequestContext {
  * user plus the PulseApi seam over the request's GitHub client — resolved
  * by server.mjs. The user rides DI (useRequestUser) so the auth guard sees
  * it pre-render, and App's setup seeds the session store during component
- * resolution (the only place ssrState can register — store#63). `null`
- * renders signed-out.
+ * resolution (the only place ssrState can register — store#63). Signed-out
+ * semantics are `ctx.user: null` (a whole-ctx `null` is the dev-bridge
+ * fallback case — see __PULSE_DEV_CTX__).
  *
  * NOTE: the dev handler currently drops the second argument (core#304) —
  * server.mjs carries an AsyncLocalStorage workaround until that ships.
