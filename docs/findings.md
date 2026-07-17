@@ -58,6 +58,18 @@ users should not need to know this — candidate fixes: `sigxPlugin()`
 injects the map itself in serve mode, or a `create @sigx` SSR template
 carries it.
 
+### F8 — dev handler drops `req` from the app factory (R1 · core#304)
+`createRequestHandler` (prod) supports `app: (url, req)` so SSR can read
+the session cookie; `createDevRequestHandler` invokes `factory(url)` —
+auth'd apps render signed-out in dev. Pulse bridges the session through
+AsyncLocalStorage in dev (exactly the pattern rfc-ssr-platform §2.3
+promises apps never need). Drop the bridge when the @sigx/vite fix ships.
+
+### F9 — template .gitignore blanket `*.js`/`*.d.ts` drops source files (R3 · repo-template#22)
+Bit twice: `env.d.ts` (CSS-module ambient declaration) silently untracked
+→ local-green/CI-red; then an entire JSDoc-typed server package's `src/*.js`
+missing from a PR. Negations must be placed AFTER the blanket patterns.
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first
@@ -66,3 +78,10 @@ carries it.
   worked as specified, streaming SSR + hydration + client-side nav verified
   in a real browser. Pulse is the first app to implement the contract with
   the real `@sigx/router` (core's spa-ssr example hand-rolls a toy router).
+- Contract §3 (guard-driven redirects) also held: the auth guard returns a
+  `/login?returnTo=…` location, `route.redirectedFrom` surfaces it, and
+  `useResponse().redirect()` turns it into a real HTTP 302 — verified in
+  both server modes.
+- @sigx/store's `ssrState()` transfer + guard-in-app-context DI both worked
+  exactly as documented (the guard resolves the session store before its
+  first await, per the router README's async-guard rule).

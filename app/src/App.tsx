@@ -1,6 +1,8 @@
 import { component } from 'sigx';
-import { RouterView, Link, useRoute } from '@sigx/router';
+import { RouterView, Link, useRoute, useRouter } from '@sigx/router';
+import { useResponse } from '@sigx/server-renderer';
 import { ThemeProvider } from '@sigx/daisyui';
+import { useSessionStore } from './stores/session';
 import { NotFound } from './pages/NotFound';
 
 /**
@@ -10,6 +12,24 @@ import { NotFound } from './pages/NotFound';
  */
 export const App = component(() => {
     const route = useRoute();
+    const router = useRouter();
+    const session = useSessionStore();
+
+    // Guard-driven HTTP redirect (router-SSR contract §3): when the initial
+    // server-side resolution was redirected (auth guard → /login), surface
+    // it as a real 302 instead of rendering the destination under the
+    // requested URL. Inert on the client.
+    const response = useResponse();
+    if (route.redirectedFrom) {
+        response.redirect(router.currentRoute.fullPath, 302);
+    }
+
+    async function signOut(e: Event) {
+        e.preventDefault();
+        await fetch('/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+    }
+
     return () => (
         <ThemeProvider defaultTheme="dim" darkMode>
             <div class="min-h-screen bg-base-200">
@@ -20,9 +40,23 @@ export const App = component(() => {
                         </Link>
                     </div>
                     <div class="flex-none">
-                        <Link to="/login" class="btn btn-ghost btn-sm">
-                            Sign in
-                        </Link>
+                        {session.user ? (
+                            <div class="flex items-center gap-2">
+                                <img
+                                    src={session.user.avatarUrl}
+                                    alt={session.user.login}
+                                    class="w-8 rounded-full"
+                                />
+                                <span class="text-sm opacity-80">{session.user.login}</span>
+                                <button class="btn btn-ghost btn-sm" onClick={signOut}>
+                                    Sign out
+                                </button>
+                            </div>
+                        ) : (
+                            <Link to="/login" class="btn btn-ghost btn-sm">
+                                Sign in
+                            </Link>
+                        )}
                     </div>
                 </div>
                 <main class="p-4">

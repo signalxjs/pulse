@@ -23,7 +23,8 @@
         "daisyui": "^5.5.14",
         "tailwindcss": "^4.2.4",
         "express": "^5.2.1",
-        "@pulse/github": "workspace:*"
+        "@pulse/github": "workspace:*",
+        "@pulse/auth": "workspace:*"
     },
     "devDependencies": {
         "@sigx/vite": "0.10.0",

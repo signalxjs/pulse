@@ -6,29 +6,44 @@
  */
 import { createRouter, createWebHistory, createMemoryHistory } from '@sigx/router';
 import type { Router } from '@sigx/router';
+import { useSessionStore } from './stores/session';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 
 export const routes = [
-    { path: '/', name: 'dashboard', component: Dashboard },
+    { path: '/', name: 'dashboard', component: Dashboard, meta: { requiresAuth: true } },
     { path: '/login', name: 'login', component: Login }
     // No '/*rest' catch-all: a wildcard route outranks the literal '/'
-    // (router#58) — until the matcher fix ships, the app shell renders
-    // NotFound when nothing matched (see App.tsx).
+    // (router#58, fixed upstream in router#59 — restore once released);
+    // until then the app shell renders NotFound when nothing matched.
 ];
+
+/** Auth guard — resolves the session store INSIDE the app context (per
+ * router docs: before the first await). Signed-out users bounce to /login
+ * with a returnTo; on the server the redirect surfaces as a real HTTP 302
+ * (see App.tsx). */
+function attachGuards(router: Router): Router {
+    router.beforeEach((to) => {
+        const session = useSessionStore();
+        if (to.meta?.requiresAuth && !session.user) {
+            return `/login?returnTo=${encodeURIComponent(to.fullPath)}`;
+        }
+    });
+    return router;
+}
 
 /** Per-request server router (memory history at the requested URL). */
 export function createServerRouter(url: string): Router {
-    return createRouter({
+    return attachGuards(createRouter({
         history: createMemoryHistory({ initialLocation: url }),
         routes
-    });
+    }));
 }
 
 /** The one client router, initialised from the current location. */
 export function createClientRouter(): Router {
-    return createRouter({
+    return attachGuards(createRouter({
         history: createWebHistory(),
         routes
-    });
+    }));
 }
