@@ -28,6 +28,22 @@ function safeReturnTo(value) {
 }
 
 /**
+ * Login/logout CSRF guard: browsers send an Origin header on cross-site
+ * POSTs — when present it must match the request Host. Requests without an
+ * Origin (curl, server-to-server, some same-origin cases) pass.
+ * @param {import('express').Request} req
+ */
+function sameOrigin(req) {
+    const origin = req.headers.origin;
+    if (!origin) return true;
+    try {
+        return new URL(origin).host === req.headers.host;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * @param {import('./index.js').AuthRouterOptions} options
  * @returns {import('express').Router}
  */
@@ -77,6 +93,9 @@ export function createAuthRouter(options) {
                 res.status(403).json({ error: 'OAuth state mismatch' });
                 return;
             }
+            // The state is SPENT the moment it validates — a later failure
+            // (missing code, exchange error) must not leave it replayable.
+            res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
             if (typeof req.query.code !== 'string' || !req.query.code) {
                 res.status(400).json({ error: 'missing OAuth code' });
                 return;
@@ -100,7 +119,6 @@ export function createAuthRouter(options) {
             const storedToken = fixtures ? 'fixtures' : payload.access_token;
             const user = await makeClient(storedToken).viewer();
             const sid = sessions.create(user, storedToken);
-            res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
             setSessionCookie(res, sid);
             res.redirect(303, returnTo);
         } catch (err) {
@@ -111,6 +129,10 @@ export function createAuthRouter(options) {
 
     router.post('/pat', async (req, res) => {
         try {
+            if (!sameOrigin(req)) {
+                res.status(403).json({ error: 'cross-origin sign-in rejected' });
+                return;
+            }
             const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
             if (!fixtures && !token) {
                 res.status(400).json({ error: 'a token is required' });
@@ -130,6 +152,10 @@ export function createAuthRouter(options) {
     });
 
     router.post('/logout', (req, res) => {
+        if (!sameOrigin(req)) {
+            res.status(403).json({ error: 'cross-origin logout rejected' });
+            return;
+        }
         const sid = verify(readCookie(req, SESSION_COOKIE), secret);
         if (sid) sessions.destroy(sid);
         res.append('set-cookie', cookieHeader(SESSION_COOKIE, '', { clear: true }));

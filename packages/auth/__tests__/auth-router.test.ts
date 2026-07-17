@@ -105,6 +105,23 @@ describe('GET /auth/callback', () => {
 });
 
 describe('POST /auth/pat', () => {
+    it('rejects cross-origin POSTs (login CSRF)', async () => {
+        const res = await fetch(`${base}/auth/pat`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+            body: JSON.stringify({ token: 'x' })
+        });
+        expect(res.status).toBe(403);
+    });
+
+    it('rejects cross-origin logout (logout CSRF)', async () => {
+        const res = await fetch(`${base}/auth/logout`, {
+            method: 'POST',
+            headers: { origin: 'https://evil.example' }
+        });
+        expect(res.status).toBe(403);
+    });
+
     it('rejects an empty token outside fixtures mode', async () => {
         const res = await fetch(`${base}/auth/pat`, {
             method: 'POST',
