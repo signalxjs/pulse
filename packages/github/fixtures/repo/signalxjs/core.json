@@ -1,0 +1,9 @@
+{
+  "owner": "signalxjs",
+  "name": "core",
+  "fullName": "signalxjs/core",
+  "description": "SignalX - a lightweight reactive component framework with signals, reactivity, and TSX support",
+  "private": false,
+  "openIssues": 8,
+  "updatedAt": "2026-07-16T15:18:23Z"
+}

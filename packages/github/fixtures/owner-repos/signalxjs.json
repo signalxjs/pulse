@@ -1,0 +1,155 @@
+[
+  {
+    "owner": "signalxjs",
+    "name": "pulse",
+    "fullName": "signalxjs/pulse",
+    "description": "Pulse — Linear-style planning on top of GitHub, built on SignalX",
+    "private": false,
+    "openIssues": 5,
+    "updatedAt": "2026-07-17T08:07:13Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "lynx",
+    "fullName": "signalxjs/lynx",
+    "description": "SignalX for Lynx — runtime, CLI plugin, and native modules for building iOS/Android apps with SignalX",
+    "private": false,
+    "openIssues": 82,
+    "updatedAt": "2026-07-17T08:05:06Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "router",
+    "fullName": "signalxjs/router",
+    "description": "Type-safe router for SignalX with SSR support, reactive hooks, and a plugin architecture",
+    "private": false,
+    "openIssues": 10,
+    "updatedAt": "2026-07-17T08:04:36Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "live-code",
+    "fullName": "signalxjs/live-code",
+    "description": null,
+    "private": false,
+    "openIssues": 17,
+    "updatedAt": "2026-07-17T03:35:22Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "use",
+    "fullName": "signalxjs/use",
+    "description": "Composable utilities for SignalX — VueUse-style tree-shakable functions built on sigx signals",
+    "private": false,
+    "openIssues": 8,
+    "updatedAt": "2026-07-16T22:25:40Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "core",
+    "fullName": "signalxjs/core",
+    "description": "SignalX - a lightweight reactive component framework with signals, reactivity, and TSX support",
+    "private": false,
+    "openIssues": 8,
+    "updatedAt": "2026-07-16T15:18:23Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "store",
+    "fullName": "signalxjs/store",
+    "description": "Reactive store for SignalX — state management built on signals",
+    "private": false,
+    "openIssues": 7,
+    "updatedAt": "2026-07-16T13:41:52Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "signalxjs.github.io",
+    "fullName": "signalxjs/signalxjs.github.io",
+    "description": null,
+    "private": false,
+    "openIssues": 41,
+    "updatedAt": "2026-07-16T13:31:46Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "monaco-editor",
+    "fullName": "signalxjs/monaco-editor",
+    "description": "Pluggable Monaco editor wrapper for SignalX with prebundled assets and a Vite plugin",
+    "private": false,
+    "openIssues": 11,
+    "updatedAt": "2026-07-16T13:09:21Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "ssg",
+    "fullName": "signalxjs/ssg",
+    "description": "Static site generator and SSR islands for SignalX — file-based routing, MDX, themes",
+    "private": false,
+    "openIssues": 10,
+    "updatedAt": "2026-07-16T09:23:03Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "terminal",
+    "fullName": "signalxjs/terminal",
+    "description": "SignalX Terminal — a TUI framework with TSX support, built on @sigx/reactivity and @sigx/runtime-core",
+    "private": false,
+    "openIssues": 12,
+    "updatedAt": "2026-07-16T07:14:56Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "daisyui",
+    "fullName": "signalxjs/daisyui",
+    "description": "DaisyUI component library for SignalX — beautiful, accessible UI components with full theme support",
+    "private": false,
+    "openIssues": 7,
+    "updatedAt": "2026-07-16T06:45:45Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "cli",
+    "fullName": "signalxjs/cli",
+    "description": "The official SignalX CLI — npm create sigx@latest, plugin discovery, and platform commands for SignalX projects",
+    "private": false,
+    "openIssues": 9,
+    "updatedAt": "2026-07-13T20:46:23Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "repo-template",
+    "fullName": "signalxjs/repo-template",
+    "description": "The canonical sigx repo setup: agent workflow, git-worktree flow, CI/release pipeline, branch protection, and governance — Use this template to start a new SignalX repo.",
+    "private": false,
+    "openIssues": 4,
+    "updatedAt": "2026-07-13T19:19:02Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "ssr-islands",
+    "fullName": "signalxjs/ssr-islands",
+    "description": "Moved into the SignalX core monorepo → github.com/signalxjs/core (packages/ssr-islands). This repository is archived.",
+    "private": false,
+    "openIssues": 7,
+    "updatedAt": "2026-06-14T12:33:52Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": "devtools",
+    "fullName": "signalxjs/devtools",
+    "description": "DevTools for SignalX — page-side plugin, Chrome/Edge extension, standalone inspector",
+    "private": false,
+    "openIssues": 2,
+    "updatedAt": "2026-06-12T08:42:18Z"
+  },
+  {
+    "owner": "signalxjs",
+    "name": ".github",
+    "fullName": "signalxjs/.github",
+    "description": "Org profile and community health files for SignalX",
+    "private": false,
+    "openIssues": 0,
+    "updatedAt": "2026-06-09T13:57:09Z"
+  }
+]

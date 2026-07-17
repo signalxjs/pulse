@@ -126,8 +126,10 @@ Node ≥ 24 required (`node:sqlite`).
 
 - `app/` → `pulse-app` (private) — the application: SSR entries implementing
   core's router-SSR contract, routes/pages, Express server.
-- `packages/github` — GitHub API client: `live` + `fixtures` adapters, ETag
-  cache (arrives M1 step 2).
+- `packages/github` → `@pulse/github` — GitHub API client: `live` +
+  `fixtures` adapters behind one interface, node:sqlite ETag cache.
+  Plain JSDoc-typed ESM (runs under the no-transpiler server) with a
+  hand-written `index.d.ts` for app code.
 - `packages/auth` — GitHub OAuth + PAT sessions (M1 step 3).
 - `packages/forms` — Standard-Schema form state (M2).
 
