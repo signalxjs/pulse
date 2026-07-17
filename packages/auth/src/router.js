@@ -71,6 +71,9 @@ export function createAuthRouter(options) {
             const [state, ...rest] = (staged ?? '').split(':');
             const returnTo = safeReturnTo(rest.join(':'));
             if (!state || req.query.state !== state) {
+                // A mismatched state is spent — clear it so a retry starts
+                // from a freshly issued state cookie, never a replay.
+                res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
                 res.status(403).json({ error: 'OAuth state mismatch' });
                 return;
             }
