@@ -74,12 +74,20 @@ describe('createLiveClient — conditional requests', () => {
         expect(err.rateLimited).toBe(false);
     });
 
+    it('403 + Retry-After counts as rate limiting (secondary limits)', async () => {
+        const { stub } = fetchStub([{ status: 403, headers: { 'retry-after': '60' } }]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        const err = await gh.viewer().catch((e: unknown) => e) as InstanceType<typeof GitHubApiError>;
+        expect(err.rateLimited).toBe(true);
+    });
+
     it('sends auth + api-version headers', async () => {
         const { stub, calls } = fetchStub([{ status: 200, body: USER, etag: '"x"' }]);
         const gh = createLiveClient({ token: 'tok123', fetch: stub as unknown as typeof fetch });
         await gh.viewer();
         expect(calls[0]!.headers.authorization).toBe('Bearer tok123');
         expect(calls[0]!.headers['x-github-api-version']).toBe('2022-11-28');
+        expect(calls[0]!.headers['user-agent']).toContain('pulse');
     });
 });
 

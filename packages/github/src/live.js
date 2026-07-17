@@ -29,7 +29,10 @@ function isRateLimited(res) {
     // header); a 403 only counts when the primary budget shows exhausted —
     // plain 403s are permissions.
     if (res.status === 429) return true;
-    return res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0';
+    return res.status === 403 && (
+        res.headers.get('x-ratelimit-remaining') === '0'
+        || res.headers.has('retry-after')
+    );
 }
 
 /**
@@ -53,6 +56,8 @@ export function createLiveClient(options) {
         const headers = {
             accept: 'application/vnd.github+json',
             authorization: `Bearer ${options.token}`,
+            // GitHub requires a User-Agent identifying the app.
+            'user-agent': 'pulse (github.com/signalxjs/pulse)',
             'x-github-api-version': '2022-11-28'
         };
         if (cached) headers['if-none-match'] = cached.etag;
