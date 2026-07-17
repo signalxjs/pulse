@@ -44,6 +44,12 @@ describe('signed cookies', () => {
         expect(verify(undefined, 'k')).toBeNull();
     });
 
+    it('malformed percent-encoding reads as an absent cookie, not a throw', async () => {
+        const { readCookie } = await import('../src/cookies.js');
+        const req = { headers: { cookie: 'pulse_sid=%E0%A4' } };
+        expect(readCookie(req, 'pulse_sid')).toBeUndefined();
+    });
+
     it('cookieHeader is HttpOnly + SameSite=Lax and clearable', () => {
         const header = cookieHeader('a', 'b');
         expect(header).toContain('HttpOnly');

@@ -70,6 +70,10 @@ export function createAuthRouter(options) {
                 res.status(403).json({ error: 'OAuth state mismatch' });
                 return;
             }
+            if (typeof req.query.code !== 'string' || !req.query.code) {
+                res.status(400).json({ error: 'missing OAuth code' });
+                return;
+            }
             const exchange = await doFetch(GITHUB_TOKEN_URL, {
                 method: 'POST',
                 headers: { accept: 'application/json', 'content-type': 'application/json' },
