@@ -18,7 +18,12 @@ export const Login = component((ctx) => {
     const returnTo = () => {
         const value = query.returnTo;
         const target = typeof value === 'string' ? value : '/';
-        return target.startsWith('/') && !target.startsWith('//') ? target : '/';
+        // Mirror the server's safeReturnTo: relative-only, no control chars.
+        // eslint-disable-next-line no-control-regex
+        if (!target.startsWith('/') || target.startsWith('//') || /[\u0000-\u001f\u007f]/.test(target)) {
+            return '/';
+        }
+        return target;
     };
 
     async function signInWithPat(e: Event) {
@@ -31,12 +36,14 @@ export const Login = component((ctx) => {
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ token: token.value })
             });
-            const body = await res.json();
+            const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-                error.value = body.error ?? 'sign-in failed';
+                error.value = body.error ?? `sign-in failed (${res.status})`;
                 return;
             }
             window.location.href = returnTo();
+        } catch {
+            error.value = 'network error — is the server reachable?';
         } finally {
             pending.value = false;
         }

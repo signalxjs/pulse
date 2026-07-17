@@ -33,9 +33,13 @@ function safeReturnTo(value) {
  */
 export function createAuthRouter(options) {
     const { sessions, secret, fixtures, makeClient, oauth } = options;
+    if (!secret) throw new Error('createAuthRouter: a secret is required — an empty secret makes cookies forgeable');
+    if (!sessions) throw new Error('createAuthRouter: a SessionStore is required');
+    if (typeof makeClient !== 'function') throw new Error('createAuthRouter: makeClient(token) is required');
     const doFetch = options.fetch ?? fetch;
     const router = express.Router();
-    router.use(express.json());
+    // /pat carries one small token — no reason to accept large bodies.
+    router.use(express.json({ limit: '4kb' }));
 
     /** @param {import('express').Response} res @param {string} sid */
     function setSessionCookie(res, sid) {
