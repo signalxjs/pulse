@@ -82,4 +82,14 @@ describe('fixtures adapter', () => {
         expect(core?.fullName).toBe('signalxjs/core');
         expect(await gh.repo('nobody', 'nothing')).toBeNull();
     });
+
+    it('rejects path-traversal segments instead of joining them', async () => {
+        const { createFixturesClient } = await import('@pulse/github');
+        const gh = createFixturesClient();
+        expect(await gh.repo('..', '..')).toBeNull();
+        expect(await gh.repo('../../../../etc', 'passwd')).toBeNull();
+        expect(await gh.ownerRepos('../secrets')).toEqual([]);
+        // Legit names with dots still work.
+        expect(await gh.ownerRepos('signalxjs')).not.toEqual([]);
+    });
 });
