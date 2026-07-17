@@ -26,10 +26,11 @@ export const routes = [
 function attachGuards(router: Router): Router {
     router.beforeEach((to) => {
         if (!to.meta?.requiresAuth) return;
-        // Server: the request user rides DI (reading the STORE here would
-        // create it outside component resolution and kill its ssrState
-        // registration — store#63). Client: the store, seeded from the blob.
-        const user = useRequestUser() ?? useSessionStore().user;
+        // Server: ONLY the request-user injectable — touching the store
+        // here would create it outside component resolution and kill its
+        // ssrState registration (store#63). Client: the store (seeded from
+        // the blob); the injectable is null there by default.
+        const user = import.meta.env.SSR ? useRequestUser() : useSessionStore().user;
         if (!user) {
             return `/login?returnTo=${encodeURIComponent(to.fullPath)}`;
         }

@@ -45,7 +45,8 @@ const server = spawn(
             PULSE_SECRET: 'smoke-secret',
             PULSE_INSECURE_COOKIES: '1'
         },
-        stdio: 'ignore'
+        // Inherit server output — CI failures need the startup logs.
+        stdio: 'inherit'
     }
 );
 

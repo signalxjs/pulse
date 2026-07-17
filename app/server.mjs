@@ -84,9 +84,9 @@ async function createServer() {
             isBot
         });
         // createDevRequestHandler invokes the app factory as factory(url) —
-        // req never reaches it (core#304). Bridge the session through
-        // AsyncLocalStorage until the fix ships; entry-server reads
-        // globalThis.__PULSE_DEV_SESSION__.
+        // req never reaches it (core#304). Bridge the full request context
+        // (user + PulseApi client) through AsyncLocalStorage until the fix
+        // ships; entry-server reads globalThis.__PULSE_DEV_CTX__.
         const als = new AsyncLocalStorage();
         globalThis.__PULSE_DEV_CTX__ = () => als.getStore() ?? null;
         app.use((req, res, next) => als.run(requestCtx(req), () => handler(req, res, next)));
@@ -106,8 +106,9 @@ async function createServer() {
         app.use(express.static(clientDir, { index: false }));
         app.use(createRequestHandler({
             template,
-            // The factory's second parameter is this request's signed-in
-            // user — prod passes it directly (router-SSR contract §1).
+            // The factory's second parameter is this request's context
+            // ({ user, api }) — prod passes it directly (router-SSR
+            // contract §1 allows extra factory parameters).
             app: (url, req) => createApp(url, requestCtx(req)),
             isBot,
             document: {

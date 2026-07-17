@@ -36,12 +36,19 @@ export const usePulseApi = defineInjectable<PulseApi>(() => {
 });
 
 /** The client-side implementation: same-origin /api/github endpoints. */
+export class PulseApiError extends Error {
+    constructor(message: string, readonly status: number) {
+        super(message);
+        this.name = 'PulseApiError';
+    }
+}
+
 export function createFetchApi(): PulseApi {
     async function call<T>(path: string): Promise<T> {
         const res = await fetch(`/api/github${path}`);
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
-            throw new Error(body.error ?? `request failed (${res.status})`);
+            throw new PulseApiError(body.error ?? `request failed (${res.status})`, res.status);
         }
         return res.json() as Promise<T>;
     }
@@ -53,8 +60,10 @@ export function createFetchApi(): PulseApi {
         repo: async (owner, name) => {
             try {
                 return await call(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
-            } catch {
-                return null;
+            } catch (err) {
+                // Not-found is a VALUE; auth/server/network failures throw.
+                if (err instanceof PulseApiError && err.status === 404) return null;
+                throw err;
             }
         }
     };

@@ -17,10 +17,12 @@ export interface RequestContext {
  * The per-request app factory (the entry contract — core
  * docs/router-ssr-contract.md §1): a FRESH app + router scoped to this URL,
  * so concurrent SSR can't interleave. Both request handlers consume this
- * export. The second parameter is the request's signed-in user (resolved
- * from the session cookie by server.mjs) — the store seeds from it before
- * the router resolves, so the auth guard sees the truth. `null` renders
- * signed-out.
+ * export. The second parameter is the request's context — the signed-in
+ * user plus the PulseApi seam over the request's GitHub client — resolved
+ * by server.mjs. The user rides DI (useRequestUser) so the auth guard sees
+ * it pre-render, and App's setup seeds the session store during component
+ * resolution (the only place ssrState can register — store#63). `null`
+ * renders signed-out.
  *
  * NOTE: the dev handler currently drops the second argument (core#304) —
  * server.mjs carries an AsyncLocalStorage workaround until that ships.
