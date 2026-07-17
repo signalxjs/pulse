@@ -1,4 +1,4 @@
-# SignalX <REPO> — shared agent guide
+# Pulse — shared agent guide
 
 > ⚠️ **BRANCH FIRST — never work on `main`.** Before touching ANY file, create a
 > worktree (`pnpm wt new <N-short-slug>`) and do everything from
@@ -21,17 +21,21 @@ This is the sigx standard agent setup. The same pattern (this file +
 it originates in [`signalxjs/repo-template`](https://github.com/signalxjs/repo-template).
 See "Adopting this setup in another sigx repo" at the bottom.
 
-<!-- TODO(sigx-standard): replace this paragraph with what THIS repo is. Example: -->
-SignalX (sigx) <REPO> is a pnpm monorepo (ESM, `"type": "module"`) of the
-packages under `packages/`. Tech stack: TypeScript (strict), Vite, Vitest,
-oxlint. Published to npm under the `@sigx` scope.
-<!-- Single-package repo? Say so here ("…is a single npm package, not a workspace")
-     and drop the workspace/`--filter` bits from "Build, Test, Lint" and "Packages". -->
+Pulse is a REAL application (Linear-style planning on top of GitHub) and
+SignalX's scale proving ground — a pnpm monorepo (ESM, `"type": "module"`)
+with the app under `app/` and hatching support packages under `packages/`
+(workspace-private until they graduate). Tech stack: TypeScript (strict),
+Vite, Vitest, oxlint, Express + `node:sqlite` (Node ≥ 24), Playwright
+smokes. `@sigx/*` is consumed at PUBLISHED versions — never workspace
+links — because real-installation friction is findings data; temporary
+`pnpm.overrides` must reference the blocking issue. Every framework gap
+found here becomes an issue (+ fix PR where feasible) on the owning repo
+(core/router/store/daisyui) and an entry in `docs/findings.md`.
 
 ## Development workflow (issue → PR → Copilot review → merge)
 
 **This is mandatory for EVERY agent-driven change — including one-line fixes.
-Never commit straight to `main`.** Repo: `signalxjs/<REPO>`, base branch `main`.
+Never commit straight to `main`.** Repo: `signalxjs/pulse`, base branch `main`.
 (Human contributors follow `CONTRIBUTING.md`, where an issue is optional; for
 agents the issue-first flow below is required.)
 
@@ -69,7 +73,7 @@ agents the issue-first flow below is required.)
    `gh` is too old to resolve `@copilot` (error: `'@copilot' not found`), request it
    via the API instead — don't skip it:
    ```sh
-   gh api --method POST repos/signalxjs/<REPO>/pulls/<pr>/requested_reviewers \
+   gh api --method POST repos/signalxjs/pulse/pulls/<pr>/requested_reviewers \
      -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
    ```
    (The reviewer-request API takes the `[bot]`-suffixed slug; the review author
@@ -104,34 +108,33 @@ agents the issue-first flow below is required.)
 
 ## Build, Test, Lint
 
-<!-- TODO(sigx-standard): adapt these to THIS repo's scripts. The defaults below
-     are the monorepo shape from signalxjs/core. -->
-
 ```bash
 pnpm install
-pnpm build       # build all packages
-pnpm test        # vitest run (unit tests across packages)
+pnpm dev         # Vite middleware + SSR dev server on :3000 (app/server.mjs)
+pnpm build       # app client + server bundles (vite build --app)
+pnpm start       # production server over dist/ (--conditions production)
+pnpm smoke       # Playwright browser smoke over the production build
+pnpm test        # vitest run (app + packages)
 pnpm test -- <path>                # single test file/dir (substring match)
-pnpm test -- -t "name of test"     # single test by name (vitest -t)
-pnpm test:watch
-pnpm test:coverage
-pnpm typecheck   # tsgo (a fast TS compiler), config: tsconfig.json
-pnpm lint        # oxlint over the packages' src
-pnpm lint:fix
-pnpm size        # size-limit bundle-size check (.size-limit.json)
+pnpm typecheck   # tsc, config: tsconfig.json
+pnpm lint        # oxlint over app/src + packages/*/src
 ```
 
-To run an example/app: `pnpm --filter <package-name> dev`.
+Node ≥ 24 required (`node:sqlite`).
 
 ## Packages
 
-<!-- TODO(sigx-standard): list THIS repo's packages, or delete this section for a
-     single-package repo. Example shape: -->
+- `app/` → `pulse-app` (private) — the application: SSR entries implementing
+  core's router-SSR contract, routes/pages, Express server.
+- `packages/github` — GitHub API client: `live` + `fixtures` adapters, ETag
+  cache (arrives M1 step 2).
+- `packages/auth` — GitHub OAuth + PAT sessions (M1 step 3).
+- `packages/forms` — Standard-Schema form state (M2).
 
-- `packages/<name>` → `@sigx/<name>` — what it does.
-
-Path aliases: `tsconfig.json` and `vitest.config.ts` map `@sigx/*` to
-`packages/*/src`, so tests and typecheck run against source, not dist.
+Support packages are workspace-private while they hatch; graduation to
+published `@sigx/*` packages is proposed through `docs/findings.md`.
+`@sigx/*` dependencies are consumed at PUBLISHED versions, never workspace
+links (see the intro).
 
 ## Parallel work with git worktrees
 
@@ -178,8 +181,8 @@ the queue, in two moments:
   from the PR:
   ```sh
   gh issue create --repo signalxjs/signalxjs.github.io \
-    --title "<REPO>: <what changed>" \
-    --body "Source: signalxjs/<REPO>#<pr>. <What needs documenting, and where on the site.> Not yet released."
+    --title "pulse: <what changed>" \
+    --body "Source: signalxjs/pulse#<pr>. <What needs documenting, and where on the site.> Not yet released."
   ```
   A user-facing PR isn't mergeable until its docs issue exists (see step 6 of
   the workflow).
@@ -187,7 +190,7 @@ the queue, in two moments:
   every open docs issue covering a change shipped in that release:
   ```sh
   gh issue comment <n> --repo signalxjs/signalxjs.github.io \
-    --body "Released in <REPO> vX.Y.Z."
+    --body "Released in pulse vX.Y.Z."
   ```
   (Mention the published package version(s) too if they differ from the tag.)
   A docs issue without a release comment means *merged but not released — don't
@@ -217,4 +220,4 @@ To adopt it in another repo:
    "Build, Test, Lint", and "Packages". Replace every `<REPO>` with the repo name.
 5. Keep the workflow, worktree, and conventions sections as-is — they are the
    shared standard.
-6. Lock down `main`: `node scripts/apply-branch-protection.mjs signalxjs/<REPO>`.
+6. Lock down `main`: `node scripts/apply-branch-protection.mjs signalxjs/pulse`.

@@ -1,0 +1,36 @@
+{
+    "name": "pulse-app",
+    "version": "0.1.0",
+    "private": true,
+    "description": "The Pulse application — planning boards over GitHub",
+    "type": "module",
+    "scripts": {
+        "dev": "node server.mjs",
+        "build": "vite build --app",
+        "start": "cross-env NODE_ENV=production node --conditions production server.mjs",
+        "smoke": "node smoke.mjs"
+    },
+    "dependencies": {
+        "sigx": "0.10.0",
+        "@sigx/reactivity": "0.10.0",
+        "@sigx/runtime-core": "0.10.0",
+        "@sigx/runtime-dom": "0.10.0",
+        "@sigx/server-renderer": "0.10.0",
+        "@sigx/cache": "0.10.0",
+        "@sigx/router": "0.8.0",
+        "@sigx/store": "0.8.0",
+        "@sigx/daisyui": "0.8.0",
+        "daisyui": "^5.5.14",
+        "tailwindcss": "^4.2.4",
+        "express": "^5.2.1"
+    },
+    "devDependencies": {
+        "@sigx/vite": "0.10.0",
+        "@tailwindcss/vite": "^4.2.4",
+        "@types/express": "^5.0.6",
+        "@types/node": "^26.1.1",
+        "cross-env": "^10.1.0",
+        "typescript": "^7.0.2",
+        "vite": "^8.1.4"
+    }
+}
