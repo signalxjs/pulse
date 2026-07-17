@@ -40,6 +40,10 @@ function isRateLimited(res) {
  * @returns {import('./index.js').GitHubClient}
  */
 export function createLiveClient(options) {
+    if (!options?.token) {
+        // Fail at construction, not as a baffling 401 with 'Bearer undefined'.
+        throw new Error('createLiveClient: a token is required (use createFixturesClient for tokenless mode)');
+    }
     const baseUrl = (options.baseUrl ?? 'https://api.github.com').replace(/\/$/, '');
     const doFetch = options.fetch ?? fetch;
     const cache = options.etagCache;

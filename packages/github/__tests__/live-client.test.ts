@@ -91,6 +91,12 @@ describe('createLiveClient — conditional requests', () => {
     });
 });
 
+describe('createLiveClient — construction', () => {
+    it('fails fast without a token', () => {
+        expect(() => createLiveClient({ token: '' as string })).toThrow(/token is required/);
+    });
+});
+
 describe('fixtures adapter', () => {
     it('serves the committed recordings, tokenless', async () => {
         const { createFixturesClient } = await import('@pulse/github');

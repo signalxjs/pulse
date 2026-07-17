@@ -29,7 +29,7 @@ export function createGitHubApi({ dbPath } = {}) {
             }
             res.json(data);
         } catch (err) {
-            if (err?.name === 'GitHubApiError') {
+            if (err?.name === 'GitHubApiError' && typeof err.status === 'number') {
                 res.status(err.rateLimited ? 429 : err.status).json({
                     error: err.rateLimited ? 'GitHub rate limit exhausted' : err.message
                 });
