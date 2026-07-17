@@ -44,8 +44,11 @@ beforeAll(async () => {
     base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`;
 });
 
-afterAll(() => {
-    server?.close();
+afterAll(async () => {
+    await new Promise<void>((resolve) => {
+        if (!server) return resolve();
+        server.close(() => resolve());
+    });
 });
 
 const get = (path: string, cookie?: string) =>

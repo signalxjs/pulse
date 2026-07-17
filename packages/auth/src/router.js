@@ -115,12 +115,13 @@ export function createAuthRouter(options) {
             }
             const exchange = await doFetch(GITHUB_TOKEN_URL, {
                 method: 'POST',
-                headers: { accept: 'application/json', 'content-type': 'application/json' },
-                body: JSON.stringify({
+                // The documented shape: form-encoded body, JSON accept.
+                headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
                     client_id: oauth.clientId,
                     client_secret: oauth.clientSecret,
                     code: req.query.code
-                })
+                }).toString()
             });
             // Defensive parse: an upstream/proxy error body may be non-JSON
             // — that's still a 502, not a 500.
