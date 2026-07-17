@@ -49,7 +49,7 @@ export const Dashboard = component(() => {
                 ),
                 error: (err) => (
                     <div class="alert alert-error">
-                        <span>Couldn't load repos: {String(err)}</span>
+                        <span>Couldn't load repos: {err instanceof Error ? err.message : String(err)}</span>
                         <button class="btn btn-sm" onClick={() => repos.refresh()}>Retry</button>
                     </div>
                 ),

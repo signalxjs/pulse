@@ -1,5 +1,5 @@
 import { component, useHead } from 'sigx';
-import { useQuery } from '@sigx/router';
+import { useQuery, Link } from '@sigx/router';
 import { useSessionStore } from '../stores/session';
 
 /**
@@ -56,7 +56,7 @@ export const Login = component((ctx) => {
                     <h2 class="card-title">Sign in to Pulse</h2>
                     {session.user ? (
                         <p class="text-sm">
-                            Signed in as <b>{session.user.login}</b> — <a class="link" href="/">go to the dashboard</a>.
+                            Signed in as <b>{session.user.login}</b> — <Link class="link" to="/">go to the dashboard</Link>.
                         </p>
                     ) : (
                         <>

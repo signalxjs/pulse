@@ -25,11 +25,11 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
      */
     const clientFor = (req) => {
         const session = getSession?.(req);
-        if (session && session.token !== 'fixtures' && etagCache) {
+        if (session) {
+            // The mode gates the shortcut — in LIVE mode a literal
+            // 'fixtures' token is just an (invalid) PAT, never a bypass.
+            if (fixtures) return createFixturesClient();
             return createLiveClient({ token: session.token, etagCache });
-        }
-        if (session && session.token === 'fixtures') {
-            return createFixturesClient();
         }
         return fallback;
     };
@@ -71,7 +71,7 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     return {
         api,
         clientFor,
-        makeClient: (token) => (token === 'fixtures' || fixtures)
+        makeClient: (token) => fixtures
             ? createFixturesClient()
             : createLiveClient({ token, etagCache })
     };

@@ -96,12 +96,15 @@ try {
     assert(ssrDoc.includes('core') && ssrDoc.includes('open issues'), 'repo data is SSR-rendered into the document');
     assert(ssrDoc.includes('store:session'), 'session store slice transfers in the SSR blob');
 
-    // 5) Client-side nav still works signed in (login page shows signed-in state).
+    // 5) Client-side nav: /login → / through a real Link, URL changes with
+    // ZERO document requests.
+    await page.goto(`${BASE}/login`, { waitUntil: 'load' });
     let docRequests = 0;
     page.on('request', (r) => { if (r.resourceType() === 'document') docRequests++; });
-    await page.click('.navbar a[href="/"]');
-    await page.waitForTimeout(300);
-    assert(docRequests === 0, 'navbar navigation stays client-side');
+    await page.click('text=go to the dashboard');
+    await page.waitForURL(`${BASE}/`, { timeout: 10000 });
+    await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });
+    assert(docRequests === 0, 'Link navigation to the dashboard stays client-side (URL changed, 0 document requests)');
 
     // 6) Sign out round-trip.
     await page.click('text=Sign out');
