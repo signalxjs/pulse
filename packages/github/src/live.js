@@ -25,8 +25,11 @@ export class GitHubApiError extends Error {
 
 /** @param {Response} res */
 function isRateLimited(res) {
-    return (res.status === 403 || res.status === 429)
-        && res.headers.get('x-ratelimit-remaining') === '0';
+    // 429 IS rate limiting (secondary limits often omit the remaining
+    // header); a 403 only counts when the primary budget shows exhausted —
+    // plain 403s are permissions.
+    if (res.status === 429) return true;
+    return res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0';
 }
 
 /**

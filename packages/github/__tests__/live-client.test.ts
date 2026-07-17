@@ -60,6 +60,20 @@ describe('createLiveClient — conditional requests', () => {
         expect(err.rateLimited).toBe(true);
     });
 
+    it('flags 429 as rateLimited even without the remaining header', async () => {
+        const { stub } = fetchStub([{ status: 429 }]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        const err = await gh.viewer().catch((e: unknown) => e) as InstanceType<typeof GitHubApiError>;
+        expect(err.rateLimited).toBe(true);
+    });
+
+    it('plain 403s (permissions) are NOT rateLimited', async () => {
+        const { stub } = fetchStub([{ status: 403 }]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        const err = await gh.viewer().catch((e: unknown) => e) as InstanceType<typeof GitHubApiError>;
+        expect(err.rateLimited).toBe(false);
+    });
+
     it('sends auth + api-version headers', async () => {
         const { stub, calls } = fetchStub([{ status: 200, body: USER, etag: '"x"' }]);
         const gh = createLiveClient({ token: 'tok123', fetch: stub as unknown as typeof fetch });

@@ -41,7 +41,13 @@ export function createFixturesClient(fixturesDir = DEFAULT_DIR) {
 
     return {
         async viewer() {
-            return load('viewer.json');
+            const viewer = load('viewer.json');
+            if (!viewer) {
+                // The interface promises a user — a missing recording is a
+                // broken fixtures dir, not a data state. Fail loudly.
+                throw new Error(`fixtures dir ${fixturesDir} has no viewer.json — run packages/github/scripts/record-fixtures.mjs`);
+            }
+            return viewer;
         },
         async viewerOrgs() {
             return load('viewer-orgs.json') ?? [];
