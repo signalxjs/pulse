@@ -12,7 +12,7 @@ import { createGitHubApi } from './server/github-api.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 4823;
 
 if (isProd && !process.env.PULSE_SECRET) {
     // A well-known secret makes every session forgeable — refuse to serve.

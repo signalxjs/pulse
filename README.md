@@ -27,7 +27,7 @@ logged in [`docs/findings.md`](docs/findings.md).
 
 ```bash
 pnpm install
-pnpm dev          # Vite middleware + SSR on :3000
+pnpm dev          # Vite middleware + SSR on :4823
 pnpm build        # client + server bundles (vite build --app)
 pnpm start        # production server over the built output
 pnpm typecheck && pnpm lint && pnpm test
