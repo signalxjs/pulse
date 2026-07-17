@@ -122,8 +122,10 @@ export function createAuthRouter(options) {
                     code: req.query.code
                 })
             });
-            const payload = await exchange.json();
-            if (!exchange.ok || !payload.access_token) {
+            // Defensive parse: an upstream/proxy error body may be non-JSON
+            // — that's still a 502, not a 500.
+            const payload = await exchange.json().catch(() => null);
+            if (!exchange.ok || !payload?.access_token) {
                 res.status(502).json({ error: 'OAuth token exchange failed' });
                 return;
             }

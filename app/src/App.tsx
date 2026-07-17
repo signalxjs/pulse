@@ -19,8 +19,9 @@ export const App = component(() => {
     // server-side resolution was redirected (auth guard → /login), surface
     // it as a real 302 instead of rendering the destination under the
     // requested URL. Inert on the client.
+    const response = useResponse();
     if (route.redirectedFrom) {
-        useResponse().redirect(router.currentRoute.fullPath, 302);
+        response.redirect(router.currentRoute.fullPath, 302);
     }
 
     async function signOut(e: Event) {
