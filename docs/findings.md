@@ -40,15 +40,25 @@ Confirmed immediately by the daisyui navbar: `<Link class="btn btn-ghost">`
 renders `<a>` with only the active-classes, custom class gone. Every
 styled app hits this on its first component.
 
-### F5 — RouterView SSR singleton warning on every request (R1 · router#53, pre-existing)
-Dev server logs the core injectable-singleton warning per request. Noise
-aside, the warning itself has a DX gap (F6).
+### F5 — RouterView SSR singleton warning on every request (R1 · router#53, OPEN)
+Dev server logs core's injectable-singleton warning per request. With Pulse's
+own tokens now named/required (see F6), the residual per-request noise is
+RouterView's internal `depth` injectable, which has no per-app provider — the
+app can't fix it. Tracked upstream as router#53 ("provide depth per app so
+core 0.10's SSR-leak warning doesn't fire on every SSR'd RouterView");
+confirmed still reproducing on the 0.10.0 matrix.
 
-### F6 — core's singleton-injectable warning doesn't say WHICH injectable (R3 · to file)
-`[sigx] Injectable "sigx:injectable" resolved to a module-global
-singleton…` — the token's debug name is the generic default, so the
-warning can't be traced to a package without grepping. Injectable tokens
-should carry (and the warning should print) their declared name.
+### F6 — core's singleton-injectable warning didn't say WHICH injectable (R3 · RESOLVED, core#213 in 0.10.0)
+`[sigx] Injectable "sigx:injectable" resolved to a module-global singleton…`
+— the token's debug name was the generic default, so the warning couldn't be
+traced without grepping. Fixed upstream by core#213 (PR #215, shipped in
+sigx 0.10.0): factory-form tokens now carry `Symbol(factory.name)`, and a new
+required form `defineInjectable<T>('Name')` throws a named `SIGX202` on a
+lookup miss instead of silently minting a process-global singleton shared
+across SSR requests. Pulse adopted it (pulse#16): `usePulseApi` is now the
+required `defineInjectable<PulseApi>('PulseApi')`, and `useRequestUser` uses a
+named factory. The warning the fix added is exactly the one we now see —
+proving 0.10.0 carries it.
 
 ### F7 — dev-mode `resolve.alias` boilerplate for pnpm layouts (R3 · to file)
 A fresh app on pnpm needs the ~16-line `devAliases` map (copied from
