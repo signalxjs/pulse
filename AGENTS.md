@@ -110,7 +110,7 @@ agents the issue-first flow below is required.)
 
 ```bash
 pnpm install
-pnpm dev         # Vite middleware + SSR dev server on :3000 (app/server.mjs)
+pnpm dev         # Vite middleware + SSR dev server on :4823 (app/server.mjs)
 pnpm build       # app client + server bundles (vite build --app)
 pnpm start       # production server over dist/ (--conditions production)
 pnpm smoke       # Playwright browser smoke over the production build
