@@ -69,6 +69,9 @@ export function createSessionStore(options) {
 
     return {
         create(user, token) {
+            // Sweep on write, not just on expired reads — sign-in-and-forget
+            // rows must age out even if their sid never comes back.
+            sweep.run(Date.now() - ttlMs);
             const sid = randomUUID();
             insert.run(sid, encrypt(key, token), user.login, user.name, user.avatarUrl, Date.now());
             return sid;
@@ -84,10 +87,19 @@ export function createSessionStore(options) {
                 sweep.run(Date.now() - ttlMs);
                 return null;
             }
+            let token;
+            try {
+                token = decrypt(key, row.token_enc);
+            } catch {
+                // Corrupt row or rotated secret: an undecryptable session is
+                // an invalid session, never a 500. Drop the row.
+                remove.run(sid);
+                return null;
+            }
             return {
                 sid,
                 user: { login: row.login, name: row.name ?? null, avatarUrl: row.avatar_url },
-                token: decrypt(key, row.token_enc)
+                token
             };
         },
         destroy(sid) {

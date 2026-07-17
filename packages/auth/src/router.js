@@ -88,8 +88,11 @@ export function createAuthRouter(options) {
                 res.status(502).json({ error: 'OAuth token exchange failed' });
                 return;
             }
-            const user = await makeClient(payload.access_token).viewer();
-            const sid = sessions.create(user, payload.access_token);
+            // Fixtures mode must stay tokenless end-to-end: a real OAuth
+            // token stored here would make /api/github build a LIVE client.
+            const storedToken = fixtures ? 'fixtures' : payload.access_token;
+            const user = await makeClient(storedToken).viewer();
+            const sid = sessions.create(user, storedToken);
             res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
             setSessionCookie(res, sid);
             res.redirect(303, returnTo);

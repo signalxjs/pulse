@@ -29,6 +29,21 @@ describe('session store', () => {
         expect(sessions.get(sid)).toBeNull();
     });
 
+    it('expired sessions are dead server-side', () => {
+        const sessions = createSessionStore({ secret: 's3cret', ttlMs: -1 });
+        const sid = sessions.create(USER, 't');
+        expect(sessions.get(sid)).toBeNull();
+    });
+
+    it('an undecryptable row is an invalid session, not a throw', () => {
+        // Same DB file, different secret — simulates secret rotation.
+        const path = `/tmp/pulse-auth-test-${process.pid}.db`;
+        const first = createSessionStore({ dbPath: path, secret: 'old' });
+        const sid = first.create(USER, 'tok');
+        const rotated = createSessionStore({ dbPath: path, secret: 'new' });
+        expect(rotated.get(sid)).toBeNull();
+    });
+
     it('requires a secret', () => {
         expect(() => createSessionStore({ secret: '' })).toThrow(/secret/);
     });
