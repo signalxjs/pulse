@@ -96,6 +96,19 @@ try {
     assert(ssrDoc.includes('core') && ssrDoc.includes('open issues'), 'repo data is SSR-rendered into the document');
     assert(ssrDoc.includes('store:session'), 'session store slice transfers in the SSR blob');
 
+    // 4b) Anti-FOUC (pulse#14): the signed-in document is themed BEFORE first
+    // paint. @sigx/daisyui's ThemeProvider only sets data-theme client-side
+    // (during hydration), so without a pre-paint theme the browser flashes the
+    // unthemed default (white) for a frame before the dark theme snaps in —
+    // most visibly right after sign-in, which is a full-page load. Guard both
+    // halves of the fix: a data-theme on <html> (no-JS fallback) AND a blocking
+    // head script that resolves the theme ahead of <body>.
+    assert(/<html[^>]*\sdata-theme=/.test(ssrDoc),
+        'the signed-in document ships a data-theme on <html> (never paints unthemed)');
+    const themeScriptAt = ssrDoc.indexOf('daisy-theme');
+    assert(themeScriptAt !== -1 && themeScriptAt < ssrDoc.indexOf('<body'),
+        'a blocking pre-paint theme script runs in <head>, before <body>');
+
     // 5) Client-side nav: /login → / through a real Link, URL changes with
     // ZERO document requests.
     await page.goto(`${BASE}/login`, { waitUntil: 'load' });

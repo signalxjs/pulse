@@ -79,6 +79,21 @@ read request state via a DI injectable; the store is first touched in the
 root component's setup, where the transfer can register. The store should
 dev-warn in the no-instance server case.
 
+### F11 — @sigx/daisyui ThemeProvider has no SSR story → theme FOUC (R3 · daisyui#51)
+`ThemeProvider` sets `data-theme` client-side only (its setup is guarded by
+`typeof document !== 'undefined'`), so under SSR it renders a bare `<div>`
+and never themes the document. Every full document load paints daisyUI's
+default (light) first, then flips to the real theme on hydration — a visible
+flash of unthemed content, most obvious right after sign-in (a full-page
+`window.location` redirect renders the signed-in dashboard, which flashes
+white before going dark). Pulse#14 works around it with a blocking `<head>`
+script that resolves the theme before first paint — but to match what
+`ThemeProvider` computes on hydration the app has to duplicate daisyUI
+internals (the `daisy-theme` storage key, the `prefers-color-scheme`
+fallback order, the default theme name). Suggested upstream: export an
+SSR-safe theme-init snippet apps can inline, or let ThemeProvider emit
+`data-theme` server-side from a cookie.
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first
