@@ -18,6 +18,15 @@ const isBot = (ua) => /bot|crawl|spider|slurp|gptbot|claudebot|perplexity|headle
 async function createServer() {
     const app = express();
 
+    // GitHub proxy — shared by dev and prod; adapter chosen by env (see
+    // app/server/github-api.mjs).
+    const { createGitHubApi } = await import('./server/github-api.mjs');
+    const { api, fixtures } = createGitHubApi({
+        dbPath: process.env.PULSE_DB || ':memory:'
+    });
+    app.use('/api/github', api);
+    console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}`);
+
     if (!isProd) {
         const { createServer: createViteServer } = await import('vite');
         const { createDevRequestHandler } = await import('@sigx/vite/ssr');

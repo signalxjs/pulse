@@ -9,15 +9,20 @@ build/
 docs/dist/
 *.d.ts
 *.d.ts.map
-# Source ambient declarations are real source, not build output.
-!app/src/env.d.ts
-!packages/*/src/*.d.ts
 *.js
 *.js.map
 
 # Keep specific JS files
 !vite.config.js
 !*.config.js
+
+# Source is source: Pulse has JSDoc-typed JS packages (they run under the
+# no-transpiler server) and ambient declarations — only ignore built output.
+# (These negations must come AFTER the *.js/*.d.ts patterns to win.)
+!app/src/env.d.ts
+!packages/*/src/**
+!packages/*/scripts/**
+!packages/*/fixtures/**
 !examples/*.js
 !scripts/*.js
 

@@ -2,7 +2,7 @@
     "name": "pulse-app",
     "version": "0.1.0",
     "private": true,
-    "description": "The Pulse application — planning boards over GitHub",
+    "description": "The Pulse application \u2014 planning boards over GitHub",
     "type": "module",
     "scripts": {
         "dev": "node server.mjs",
@@ -22,7 +22,8 @@
         "@sigx/daisyui": "0.8.0",
         "daisyui": "^5.5.14",
         "tailwindcss": "^4.2.4",
-        "express": "^5.2.1"
+        "express": "^5.2.1",
+        "@pulse/github": "workspace:*"
     },
     "devDependencies": {
         "@sigx/vite": "0.10.0",
