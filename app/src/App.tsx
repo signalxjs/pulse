@@ -3,6 +3,7 @@ import { RouterView, Link, useRoute, useRouter } from '@sigx/router';
 import { useResponse } from '@sigx/server-renderer';
 import { ThemeProvider } from '@sigx/daisyui';
 import { useSessionStore } from './stores/session';
+import { useRequestUser } from './session';
 import { NotFound } from './pages/NotFound';
 
 /**
@@ -13,7 +14,13 @@ import { NotFound } from './pages/NotFound';
 export const App = component(() => {
     const route = useRoute();
     const router = useRouter();
+    // First store touch happens HERE, inside component resolution, so
+    // ssrState registers the transfer slice; then seed from the request.
     const session = useSessionStore();
+    const requestUser = useRequestUser();
+    if (requestUser && !session.user) {
+        session.setUser(requestUser);
+    }
 
     // Guard-driven HTTP redirect (router-SSR contract §3): when the initial
     // server-side resolution was redirected (auth guard → /login), surface

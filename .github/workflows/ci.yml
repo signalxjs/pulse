@@ -47,6 +47,29 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # The Playwright smoke job (production build, fixture mode) arrives with
-  # pulse#1 M1 step 4. verify-pack returns if/when packages/ start
-  # publishing (they are workspace-private while they hatch).
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Browser smoke (fixture mode)
+        run: pnpm smoke
+
+  # verify-pack returns if/when packages/ start publishing (they are
+  # workspace-private while they hatch).

@@ -25,11 +25,12 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
      */
     const clientFor = (req) => {
         const session = getSession?.(req);
-        if (session && session.token !== 'fixtures' && etagCache) {
+        if (session) {
+            // The mode gates the shortcut — in LIVE mode a literal
+            // 'fixtures' token is just an (invalid) PAT, never a bypass.
+            // (fallback IS the shared fixtures client in fixtures mode.)
+            if (fixtures) return fallback;
             return createLiveClient({ token: session.token, etagCache });
-        }
-        if (session && session.token === 'fixtures') {
-            return createFixturesClient();
         }
         return fallback;
     };
@@ -68,7 +69,11 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     api.get('/owners/:owner/repos', route((req, gh) => gh.ownerRepos(req.params.owner)));
     api.get('/repos/:owner/:name', route((req, gh) => gh.repo(req.params.owner, req.params.name)));
 
-    return { api, makeClient: (token) => (token === 'fixtures' || fixtures)
-        ? createFixturesClient()
-        : createLiveClient({ token, etagCache }) };
+    return {
+        api,
+        clientFor,
+        makeClient: (token) => fixtures
+            ? createFixturesClient()
+            : createLiveClient({ token, etagCache })
+    };
 }

@@ -7,6 +7,7 @@
 import { createRouter, createWebHistory, createMemoryHistory } from '@sigx/router';
 import type { Router } from '@sigx/router';
 import { useSessionStore } from './stores/session';
+import { useRequestUser } from './session';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 
@@ -18,14 +19,21 @@ export const routes = [
     // until then the app shell renders NotFound when nothing matched.
 ];
 
-/** Auth guard — resolves the session store INSIDE the app context (per
- * router docs: before the first await). Signed-out users bounce to /login
- * with a returnTo; on the server the redirect surfaces as a real HTTP 302
- * (see App.tsx). */
+/** Auth guard. Server: reads ONLY the request-user injectable (touching
+ * the session store pre-render would kill its ssrState registration —
+ * store#63). Client: reads the blob-seeded store. Both resolve inside the
+ * app context before the first await (router docs). Signed-out users
+ * bounce to /login with a returnTo; on the server the redirect surfaces as
+ * a real HTTP 302 (see App.tsx). */
 function attachGuards(router: Router): Router {
     router.beforeEach((to) => {
-        const session = useSessionStore();
-        if (to.meta?.requiresAuth && !session.user) {
+        if (!to.meta?.requiresAuth) return;
+        // Server: ONLY the request-user injectable — touching the store
+        // here would create it outside component resolution and kill its
+        // ssrState registration (store#63). Client: the store (seeded from
+        // the blob); the injectable is null there by default.
+        const user = import.meta.env.SSR ? useRequestUser() : useSessionStore().user;
+        if (!user) {
             return `/login?returnTo=${encodeURIComponent(to.fullPath)}`;
         }
     });

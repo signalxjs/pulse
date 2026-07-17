@@ -5,7 +5,7 @@
 declare module '*.css' {}
 
 // Dev-only bridge: createDevRequestHandler drops the app factory's second
-// argument (core#304), so server.mjs exposes the request's session through
+// argument (core#304), so server.mjs exposes the request context through
 // AsyncLocalStorage behind this global. Remove with the core fix.
 // eslint-disable-next-line no-var
-declare var __PULSE_DEV_SESSION__: (() => import('./session').SessionUser | null) | undefined;
+declare var __PULSE_DEV_CTX__: (() => import('./entry-server').RequestContext | null) | undefined;

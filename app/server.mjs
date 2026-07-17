@@ -42,7 +42,7 @@ async function createServer() {
     // is live PAT-only — a real user's PAT must reach real GitHub, never be
     // silently swallowed by fixtures. CI smokes set PULSE_FIXTURES=1.
     const fixtures = process.env.PULSE_FIXTURES === '1';
-    const { api, makeClient } = createGitHubApi({
+    const { api, clientFor, makeClient } = createGitHubApi({
         dbPath,
         fixtures,
         getSession: (req) => getSession(req, sessions, secret)
@@ -52,7 +52,25 @@ async function createServer() {
     app.use('/api/github', api);
     console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
 
-    const sessionUser = (req) => getSession(req, sessions, secret)?.user ?? null;
+    // Per-request SSR context: the signed-in user + a PulseApi over the
+    // request's GitHub client (session token > env fallback). When
+    // clientFor() is null (live setup, unauthenticated), /api/github
+    // answers 401 and the SSR entry provides NO PulseApi — the auth guard
+    // redirects before any page could reach for it.
+    const requestCtx = (req) => {
+        const user = getSession(req, sessions, secret)?.user ?? null;
+        const gh = clientFor(req);
+        return {
+            user,
+            api: gh && {
+                viewer: () => gh.viewer(),
+                viewerOrgs: () => gh.viewerOrgs(),
+                viewerRepos: () => gh.viewerRepos(),
+                ownerRepos: (owner) => gh.ownerRepos(owner),
+                repo: (owner, name) => gh.repo(owner, name)
+            }
+        };
+    };
 
     if (!isProd) {
         const { createServer: createViteServer } = await import('vite');
@@ -69,12 +87,12 @@ async function createServer() {
             isBot
         });
         // createDevRequestHandler invokes the app factory as factory(url) —
-        // req never reaches it (core#304). Bridge the session through
-        // AsyncLocalStorage until the fix ships; entry-server reads
-        // globalThis.__PULSE_DEV_SESSION__.
+        // req never reaches it (core#304). Bridge the full request context
+        // (user + PulseApi client) through AsyncLocalStorage until the fix
+        // ships; entry-server reads globalThis.__PULSE_DEV_CTX__.
         const als = new AsyncLocalStorage();
-        globalThis.__PULSE_DEV_SESSION__ = () => als.getStore() ?? null;
-        app.use((req, res, next) => als.run(sessionUser(req), () => handler(req, res, next)));
+        globalThis.__PULSE_DEV_CTX__ = () => als.getStore() ?? null;
+        app.use((req, res, next) => als.run(requestCtx(req), () => handler(req, res, next)));
     } else {
         const { createRequestHandler } = await import('@sigx/server-renderer/node');
         const { collectAssets } = await import('@sigx/vite/ssr');
@@ -91,9 +109,10 @@ async function createServer() {
         app.use(express.static(clientDir, { index: false }));
         app.use(createRequestHandler({
             template,
-            // The factory's second parameter is this request's signed-in
-            // user — prod passes it directly (router-SSR contract §1).
-            app: (url, req) => createApp(url, sessionUser(req)),
+            // The factory's second parameter is this request's context
+            // ({ user, api }) — prod passes it directly (router-SSR
+            // contract §1 allows extra factory parameters).
+            app: (url, req) => createApp(url, requestCtx(req)),
             isBot,
             document: {
                 // Route-chunk preloads (contract §2) join here once routes
