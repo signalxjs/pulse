@@ -31,16 +31,19 @@ function safeReturnTo(value) {
 }
 
 /**
+ * Drop explicit default ports so 'example.com:443' == 'example.com'.
+ * @param {string} host
+ */
+function normalizeHost(host) {
+    return host.toLowerCase().replace(/:(443|80)$/, '');
+}
+
+/**
  * Login/logout CSRF guard: browsers send an Origin header on cross-site
  * POSTs — when present it must match the request Host. Requests without an
  * Origin (curl, server-to-server, some same-origin cases) pass.
  * @param {import('express').Request} req
  */
-/** Drop explicit default ports so 'example.com:443' == 'example.com'. */
-function normalizeHost(host) {
-    return host.toLowerCase().replace(/:(443|80)$/, '');
-}
-
 function sameOrigin(req) {
     const origin = req.headers.origin;
     if (!origin) return true;

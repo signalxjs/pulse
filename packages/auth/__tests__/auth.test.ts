@@ -11,17 +11,23 @@ import { sign, verify, cookieHeader, SESSION_COOKIE } from '../src/cookies.js';
 const USER = { login: 'octo', name: 'Octo Cat', avatarUrl: 'https://a/u' };
 
 describe('session store', () => {
-    it('round-trips a session with the token encrypted at rest', () => {
-        const sessions = createSessionStore({ secret: 's3cret' });
+    it('round-trips a session with the token encrypted at rest', async () => {
+        const { DatabaseSync } = await import('node:sqlite');
+        const path = join(tmpdir(), `pulse-auth-atrest-${process.pid}.db`);
+        const sessions = createSessionStore({ dbPath: path, secret: 's3cret' });
         const sid = sessions.create(USER, 'ghp_supersecret');
 
         const session = sessions.get(sid);
         expect(session?.user).toEqual(USER);
         expect(session?.token).toBe('ghp_supersecret');
 
-        // At-rest check: nothing in the sid or store output leaks the token
-        // in plaintext (the sqlite page itself stores AES-256-GCM output).
-        expect(sid).not.toContain('ghp_');
+        // REAL at-rest check: read the raw row — the stored token_enc must
+        // not contain the plaintext token.
+        const raw = new DatabaseSync(path);
+        const row = raw.prepare('SELECT token_enc FROM sessions WHERE sid = ?').get(sid) as { token_enc: string };
+        expect(row.token_enc).not.toContain('ghp_supersecret');
+        expect(row.token_enc.length).toBeGreaterThan(20);
+        raw.close();
     });
 
     it('destroy() invalidates the sid', () => {
