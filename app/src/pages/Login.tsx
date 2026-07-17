@@ -61,6 +61,9 @@ export const Login = component((ctx) => {
                             </a>
                             <div class="divider text-xs opacity-60">or use a token</div>
                             <form class="w-full space-y-2" onSubmit={signInWithPat}>
+                                {/* Two-way: the sigx vite transform compiles
+                                    the model getter into a get/set pair —
+                                    verified: typed input reaches the POST. */}
                                 <input
                                     class="input input-bordered w-full"
                                     type="password"

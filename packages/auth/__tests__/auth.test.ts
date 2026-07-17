@@ -3,6 +3,8 @@
  * the request→session resolution path the proxy and SSR entries rely on.
  */
 import { describe, it, expect } from 'vitest';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createSessionStore, getSession } from '@pulse/auth';
 import { sign, verify, cookieHeader, SESSION_COOKIE } from '../src/cookies.js';
 
@@ -37,7 +39,7 @@ describe('session store', () => {
 
     it('an undecryptable row is an invalid session, not a throw', () => {
         // Same DB file, different secret — simulates secret rotation.
-        const path = `/tmp/pulse-auth-test-${process.pid}.db`;
+        const path = join(tmpdir(), `pulse-auth-test-${process.pid}.db`);
         const first = createSessionStore({ dbPath: path, secret: 'old' });
         const sid = first.create(USER, 'tok');
         const rotated = createSessionStore({ dbPath: path, secret: 'new' });
