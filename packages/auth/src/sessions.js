@@ -38,7 +38,11 @@ function decrypt(key, payload) {
     return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf-8');
 }
 
-/** Sessions older than this are dead server-side (matches the cookie's Max-Age). */
+/**
+ * Default server-side TTL — matches the session cookie's default Max-Age
+ * (30 days). Overriding ttlMs changes only the SERVER cutoff; the cookie
+ * keeps its own Max-Age, and whichever expires first wins.
+ */
 const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
