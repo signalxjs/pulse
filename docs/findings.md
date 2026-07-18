@@ -27,6 +27,12 @@ alignment wave; the matrix is fragile without a lockstep-release story.
 fails with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`. Worked around with
 documented `pnpm.overrides`. Suggested: publish-time guard asserting no
 `workspace:` specifiers survive packing.
+**Resolved in the 0.12 wave:** `@sigx/cache@0.12.0` publishes correct
+`^0.12.0` specifiers (`npm view @sigx/cache@0.12.0 dependencies`), so the
+`pnpm.overrides` block is gone as of the core-0.12 upgrade (pulse#18).
+`pnpm why -r @sigx/reactivity` confirms a single 0.12.0 copy. (The tracking
+issue core#301 stays open for the publish-guard follow-up, but the broken
+artifact no longer exists on npm.)
 
 ### F3 — root `'/'` loses to a `'/*rest'` catch-all (R1 · router#58)
 First page load rendered the 404 page. A literal path must outrank a
@@ -34,6 +40,12 @@ wildcard for the same URL; it does for every path EXCEPT the zero-segment
 root. Worked around by dropping the catch-all route and branching on
 `useRoute().matched.length === 0` in the shell. Fix PR to follow against
 matcher scoring.
+**Resolved in @sigx/router 0.9.0:** the literal `'/'` now outranks the
+wildcard for the root URL. As of the core-0.12 upgrade (pulse#18) the real
+`'/*rest'` catch-all route is restored and the shell renders `<RouterView />`
+directly; verified at runtime — `/` still resolves the home route (302 →
+`/login` when signed out) while an unknown path renders NotFound with HTTP
+404.
 
 ### F4 — Link/RouterLink drops `class`/`style` (R1 · router#30, pre-existing)
 Confirmed immediately by the daisyui navbar: `<Link class="btn btn-ghost">`
@@ -103,6 +115,17 @@ internals (the `daisy-theme` storage key, the `prefers-color-scheme`
 fallback order, the default theme name). Suggested upstream: export an
 SSR-safe theme-init snippet apps can inline, or let ThemeProvider emit
 `data-theme` server-side from a cookie.
+
+### F12 — no `@sigx/daisyui` release for core 0.12 (R1 · to file on daisyui)
+The core-0.12 upgrade (pulse#18) took core→0.12.0, router→0.9.0,
+store→0.9.0, but `@sigx/daisyui` tops out at 0.8.0, whose peers cap at
+`>=0.10.0 <0.11.0`. Installing against core 0.12 leaves an unmet-peer
+warning on every `pnpm install`. It is only a warning — pnpm still binds
+daisyui to the single 0.12.0 copy the app provides, `ThemeProvider` renders
+and hydrates fine, and `pnpm why -r @sigx/reactivity` shows one 0.12.0 — so
+the app runs, but the ecosystem again can't follow a core release without a
+daisyui alignment bump (same lockstep-release gap as F1). Pulse holds
+daisyui at 0.8.0 until a 0.12-compatible release ships.
 
 ## Working notes
 
