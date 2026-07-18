@@ -26,13 +26,6 @@
         "wt": "node scripts/worktree.mjs",
         "branch-protection": "node scripts/apply-branch-protection.mjs"
     },
-    "pnpm": {
-        "overrides": {
-            "@sigx/cache>@sigx/reactivity": "0.10.0",
-            "@sigx/cache>@sigx/runtime-core": "0.10.0"
-        },
-        "//": "TEMPORARY: @sigx/cache@0.10.0 shipped with workspace:^ specifiers (signalxjs/core#301); drop when the republish lands."
-    },
     "devDependencies": {
         "@types/node": "^26.1.1",
         "happy-dom": "^20.10.6",

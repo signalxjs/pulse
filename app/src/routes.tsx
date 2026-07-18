@@ -10,13 +10,15 @@ import { useSessionStore } from './stores/session';
 import { useRequestUser } from './session';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
+import { NotFound } from './pages/NotFound';
 
 export const routes = [
     { path: '/', name: 'dashboard', component: Dashboard, meta: { requiresAuth: true } },
-    { path: '/login', name: 'login', component: Login }
-    // No '/*rest' catch-all: a wildcard route outranks the literal '/'
-    // (router#58, fixed upstream in router#59 — restore once released);
-    // until then the app shell renders NotFound when nothing matched.
+    { path: '/login', name: 'login', component: Login },
+    // Real catch-all 404: router#58 (fixed in @sigx/router 0.9.0) means the
+    // literal '/' now outranks this wildcard, so it no longer shadows the
+    // home route. Anything unmatched renders NotFound (which sets HTTP 404).
+    { path: '/*rest', name: 'not-found', component: NotFound }
 ];
 
 /** Auth guard. Server: reads ONLY the request-user injectable (touching

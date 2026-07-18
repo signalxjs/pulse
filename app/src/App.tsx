@@ -4,7 +4,6 @@ import { useResponse } from '@sigx/server-renderer';
 import { ThemeProvider } from '@sigx/daisyui';
 import { useSessionStore } from './stores/session';
 import { useRequestUser } from './session';
-import { NotFound } from './pages/NotFound';
 
 /**
  * The Pulse app shell — top navigation + the routed page. Everything below
@@ -67,10 +66,9 @@ export const App = component(() => {
                     </div>
                 </div>
                 <main class="p-4">
-                    {/* Catch-all fallback in the shell: a '/*rest' route
-                        would outrank '/' (router#58) — swap back to a real
-                        catch-all route when the matcher fix ships. */}
-                    {route.matched.length === 0 ? <NotFound /> : <RouterView />}
+                    {/* The route table's '/*rest' catch-all renders NotFound
+                        for anything unmatched (router#58 fixed in 0.9.0). */}
+                    <RouterView />
                 </main>
             </div>
         </ThemeProvider>
