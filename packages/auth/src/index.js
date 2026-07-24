@@ -7,5 +7,6 @@
  */
 
 export { createSessionStore } from './sessions.js';
-export { createAuthHandler, getSession } from './handler.js';
+export { createAuthHandler, getSession, safeReturnTo } from './handler.js';
+export { signInWithPat, SignInError } from './pat.js';
 export { SESSION_COOKIE } from './cookies.js';

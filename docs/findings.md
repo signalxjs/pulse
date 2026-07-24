@@ -268,6 +268,71 @@ around with an explicit `cell.refresh()` after the mutation. Board reads
 are `server: false` for now (SSR ships the static shell; the client
 fetches), which sidesteps the REPLACE path entirely.
 
+### F16 — `@sigx/resume` coexist mode: the documented client recipe kills full-tree hydration; the working recipe is server-plugin + loader only (R3 · to file on core)
+Adopting `@sigx/resume@0.13.0` on Pulse's entry surface (pulse#57): resume on
+the Login PAT form, the drag-heavy board stays `ssrClientPlugin`-hydrated.
+The goal was **coexist** — one server, one client entry, resume boundaries
+living inside a fully hydrated shell (sign-out button, router `<Link>`s).
+
+**The trap.** The plugin's docstring frames the client call as
+`app.use(resumePlugin())` — "coexist mode: declares explicit-boundaries
+mode." Wiring exactly that (client `resumePlugin()` + `ssrClientPlugin`
++ `hydrate('#app')`) **broke the whole shell**: the smoke's PAT sign-in hung
+because the Login form's submit handler never fired — nothing hydrated. Root
+cause, read from the shipped source: the client half unconditionally calls
+`provideHydrateDefaults(ctx, { boundaries: 'explicit' })`, and per
+`hydrate-defaults.d.ts` that means *"no root walk — ONLY boundary-table
+entries hydrate (the islands app default; the root boundary is `never`)."*
+So `resumePlugin()` on the client is the **app-less / islands posture**: it
+turns OFF full-tree hydration. There is no flag to keep the root walk; the
+"coexist mode" label on that call is misleading.
+
+**The working coexist recipe** (verified — board drags, shell hydrates,
+resume form wakes, both node + workerd smokes green):
+- server (entry-server) `app.use(resumePlugin({ manifest }))` — stamps
+  resume components (`*.resume.tsx`) as `hydrate: 'never'` boundaries; inert
+  for every other component;
+- client keeps its normal `'auto'` `ssrClientPlugin.hydrate('#app')` — the
+  root walk hydrates the shell and, seeing the server-set `never` on resume
+  boundaries, skips them;
+- client imports **only** the delegation loader (`virtual:sigx-resume/entry`)
+  to wake those boundaries on interaction — and does **NOT** call client
+  `resumePlugin()`.
+The client `resumePlugin()` call's only client-side effect *is* the
+explicit-boundaries provide (its object carries `install` + `server` hooks,
+no client hooks), so dropping it loses nothing coexist needs. Ask upstream
+for either a `boundaries: 'auto'` coexist option on the client plugin or a
+docs note that coexisting-with-hydration means *don't* call it. **Cohabitation
+verdict: resume + `ssrClientPlugin` DO coexist cleanly in a real app at 0.13
+— but via a recipe the plugin's own "coexist mode" docstring points away
+from.**
+
+**`form: true` in coexist mode: STAMPS (positive).** The prior worry was that
+a resume `<form>` in a hydrated app might fall to hydrate-mode and never get
+the native `action`. It does not: the SSR'd Login form carries
+`action="/_sigx/fn/…%23submitPat" method="post"` **and** `data-sigx-on:submit`
++ `data-sigx-pd:submit` together. All three transports verified against the
+production build: native form POST → 303 PRG + `Set-Cookie` (JS off);
+RPC → 200 JSON envelope + `Set-Cookie` (JS on); returnTo sanitized
+server-side (`https://evil` → `/`). One `serverFn({ form: true, input })` +
+one `signInWithPat` primitive shared with `/auth/pat`.
+
+**JS-shipped delta (Login route, gzip, eager script + modulepreloads).**
+Baseline (main, no resume) `42.5 KB` (entry 12.3 + sigx 30.2). Coexist branch
+`44.7 KB` (entry 11.8 + sigx 30.4 + rolldown-runtime 0.2 + resume loader/regs
+1.2 + the preloaded `LoginForm.resume` boundary 0.9 + its `pat.server` stub
+0.2). **Δ ≈ +2.2 KB gzip.** Lazy — fetched only on the first form interaction,
+not on load: resume client runtime `2.4 KB` + QRL registry `0.4 KB` + the
+extracted handler `0.3 KB`. The honest read: **coexist does not shrink the
+Login payload** — by design it keeps the full shell-hydration bundle — so the
+resume win here is *capability*, not bytes: the sign-in form is fully
+functional (a real POST that sets the session) with **zero** of that
+44.7 KB executed, and the form's own logic stays off the load path until the
+user touches it. Payload reduction is the app-less posture's win, which we
+deliberately traded away to keep the shell interactive. (Aside: vite's
+entry-graph heuristic *modulepreloads* the resume boundary + its stub on the
+Login route; app-less resume would ship the loader alone. Minor, noted.)
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first

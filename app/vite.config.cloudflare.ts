@@ -12,6 +12,7 @@
 import { defineConfig } from 'vite';
 import sigx from '@sigx/vite';
 import { sigxServer } from '@sigx/vite/server';
+import { sigxResume } from '@sigx/vite/resume';
 import tailwindcss from '@tailwindcss/vite';
 import { cloudflare } from '@sigx/cloudflare';
 
@@ -25,6 +26,7 @@ export default defineConfig({
                 adapter: cloudflare()
             }
         }),
+        sigxResume(),
         sigxServer(),
         tailwindcss()
     ],

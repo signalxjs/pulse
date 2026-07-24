@@ -221,11 +221,26 @@ try {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });
     assert(page.url().includes('/login'), 'browser lands on /login when signed out');
 
-    // 2) PAT sign-in through the real form (fixtures accepts any token).
+    // 1b) The PAT form is a resume boundary carrying a NATIVE `form: true`
+    // action (pulse#57): submitting works with JS off / before the loader
+    // arrives. The build stamps action="/_sigx/fn/<symbol>" + method=post
+    // onto the same <form> that also carries the resume delegation attr.
+    const formAction = await page.getAttribute('form', 'action');
+    const formMethod = (await page.getAttribute('form', 'method'))?.toLowerCase();
+    assert(
+        typeof formAction === 'string' && formAction.includes('/_sigx/fn/') && formAction.includes('submitPat') && formMethod === 'post',
+        `the PAT form carries the native form:true action (${formAction} ${formMethod})`
+    );
+    assert(await page.getAttribute('form', 'data-sigx-on:submit') !== null,
+        'the PAT form is a resume boundary (carries the delegation submit QRL)');
+
+    // 2) PAT sign-in through the real form (fixtures accepts any token). With
+    // JS on this exercises the resume path: the delegation loader wakes the
+    // boundary on submit and calls submitPat as RPC, which redirects.
     await page.fill('input[type=password]', 'anything');
     await page.click('button[type=submit]');
     await page.waitForURL(`${BASE}/`, { timeout: 10000 });
-    assert(true, 'PAT sign-in redirects back to the dashboard');
+    assert(true, 'PAT sign-in through the resume form redirects back to the dashboard');
 
     // 3) The dashboard renders REAL data (fixtures = recorded signalxjs org).
     await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });

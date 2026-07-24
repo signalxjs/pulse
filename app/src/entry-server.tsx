@@ -1,5 +1,7 @@
 import { defineApp } from 'sigx';
 import { cachePlugin } from '@sigx/cache';
+import { resumePlugin } from '@sigx/resume';
+import { resumeManifest } from 'virtual:sigx-manifests';
 import { App } from './App';
 import { createServerRouter } from './routes';
 import { useRequestUser, type SessionUser } from './session';
@@ -35,6 +37,13 @@ interface CtxCarrier {
 export async function createApp(url: string, ctxOrReq: RequestContext | CtxCarrier | null = null) {
     const app = defineApp(<App />);
     app.use(cachePlugin());
+    // Coexist mode (pulse#57): the resume pack claims ONLY components the
+    // sigxResume() transform stamped with `__resumeId` (our
+    // `*.resume.tsx` login form) — inert for the board and every other
+    // component, which render and hydrate through ssrClientPlugin exactly as
+    // before. The manifest (chunk URLs) is inlined by the SSR build;
+    // undefined under dev, where resume runs manifest-less.
+    app.use(resumePlugin({ manifest: resumeManifest }));
 
     const resolved: RequestContext | null =
         ctxOrReq && 'pulseCtx' in ctxOrReq ? ctxOrReq.pulseCtx ?? null

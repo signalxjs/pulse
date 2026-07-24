@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import sigx from '@sigx/vite';
 import { sigxServer } from '@sigx/vite/server';
+import { sigxResume } from '@sigx/vite/resume';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -32,14 +33,25 @@ const devAliases = {
     '@sigx/server-renderer/server': pkg('@sigx/server-renderer', 'dist/server/index.js'),
     '@sigx/server-renderer/client': pkg('@sigx/server-renderer', 'dist/client/index.js'),
     '@sigx/server-renderer/node': pkg('@sigx/server-renderer', 'dist/node.js'),
-    '@sigx/server-renderer': pkg('@sigx/server-renderer')
+    '@sigx/server-renderer': pkg('@sigx/server-renderer'),
+    // Resume: server half rides the entry-server app factory; the client
+    // half (delegation loader + QRL runtime) lazy-loads on first
+    // interaction. Same single-copy pin as the rest of the @sigx family.
+    '@sigx/resume/server': pkg('@sigx/resume', 'dist/server/index.js'),
+    '@sigx/resume/client': pkg('@sigx/resume', 'dist/client/index.js'),
+    '@sigx/resume/loader': pkg('@sigx/resume', 'dist/loader/index.js'),
+    '@sigx/resume': pkg('@sigx/resume', 'dist/index.js')
 };
 
 export default defineConfig(({ command }) => ({
     // sigxServer(): *.server.ts modules become fetch stubs in the client
     // build, the SSR build emits the fn registry (dist/server/
     // sigx-server-fns.js), and dev gets the /_sigx/fn endpoint middleware.
-    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), sigxServer(), tailwindcss()],
+    // sigxResume(): extracts resume-module (`*.resume.tsx`) event handlers
+    // into lazily-imported QRL chunks and stamps their components with
+    // `__resumeId` — inert for every non-resume component (the board renders
+    // and hydrates exactly as before). Sibling to sigxServer(), after sigx().
+    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), sigxResume(), sigxServer(), tailwindcss()],
     oxc: {
         jsx: {
             runtime: 'automatic',
@@ -48,6 +60,6 @@ export default defineConfig(({ command }) => ({
     },
     ...(command === 'serve' && {
         resolve: { alias: devAliases },
-        ssr: { noExternal: ['sigx', '@sigx/server-renderer', '@sigx/router', '@sigx/store'] }
+        ssr: { noExternal: ['sigx', '@sigx/server-renderer', '@sigx/resume', '@sigx/router', '@sigx/store'] }
     })
 }));

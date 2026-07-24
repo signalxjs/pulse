@@ -29,6 +29,13 @@ export interface PulseServerServices {
     fixtures: boolean;
     /** The cookie-signing / token-encryption secret. */
     secret: string;
+    /**
+     * Whether issued cookies carry the Secure attribute — the caller's
+     * decision (prod, unless the plain-http localhost opt-out). The
+     * `form: true` sign-in server function reads it to mint the session
+     * cookie exactly as the `/auth` handler does.
+     */
+    secureCookies: boolean;
 }
 
 declare global {
