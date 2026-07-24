@@ -101,7 +101,7 @@ const BoardPage = component(() => {
             const id = statusOf(issue, config);
             counts.set(id, (counts.get(id) ?? 0) + 1);
         }
-        const loading = issues.value === null;
+        const loading = issues.state !== 'ready';
         return (
             <div class="flex h-full items-start gap-3.5 overflow-x-auto px-[18px] py-4">
                 {STATUSES.map((s) => (

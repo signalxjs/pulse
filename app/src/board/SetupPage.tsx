@@ -152,9 +152,9 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
                 value={value}
                 onChange={(e: Event) => onChange((e.target as HTMLSelectElement).value)}
             >
-                <option value="" selected={value === ''}>No label — derived from issue state</option>
+                <option value="">No label — derived from issue state</option>
                 {labelOptions.map((name) => (
-                    <option key={name} value={name} selected={name === value}>{name}</option>
+                    <option key={name} value={name}>{name}</option>
                 ))}
             </select>
         );
