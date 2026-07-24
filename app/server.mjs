@@ -134,6 +134,12 @@ async function createServer() {
         // The server-function endpoint answers POST /_sigx/fn/<symbol>;
         // everything else falls through to the document handler.
         app.use(createServerFnHandler({ functions: serverFns }));
+        // Route-chunk preloads (router-SSR contract §2): the board is a
+        // lazy route (pulse#39), so board documents preload its chunk (+
+        // transitive statics/CSS) alongside the entry's assets — computed
+        // once here, chosen per request via the function-form `document`.
+        const entryAssets = collectAssets(manifest, ['src/entry-client.tsx']);
+        const boardAssets = collectAssets(manifest, ['src/entry-client.tsx', 'src/board/BoardPage.tsx']);
         app.use(createRequestHandler({
             template,
             // The factory's second parameter is this request's context
@@ -141,11 +147,9 @@ async function createServer() {
             // allows extra factory parameters).
             app: async (url, req) => createApp(url, await requestCtx(req)),
             isBot,
-            document: {
-                // Route-chunk preloads (contract §2) join here once routes
-                // go lazy (M2) — for now the entry's own assets suffice.
-                assets: collectAssets(manifest, [])
-            }
+            document: (url) => ({
+                assets: url.split('?')[0].startsWith('/b/') ? boardAssets : entryAssets
+            })
         }));
     }
 

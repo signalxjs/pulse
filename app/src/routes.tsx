@@ -1,9 +1,16 @@
 /**
- * The Pulse route table — shared by both entries. Route components stay
- * EAGER in the skeleton; real pages arrive lazy (`component: () =>
- * import(...)`) so each route code-splits, per the router-SSR contract's
- * chunk clause (core docs/router-ssr-contract.md §2).
+ * The Pulse route table — shared by both entries. The board is the first
+ * LAZY route: `lazy(() => import(...))` code-splits BoardPage into its own
+ * chunk, per the router-SSR contract's chunk clause (core
+ * docs/router-ssr-contract.md §2). Note router 0.10's lazy API: RouterView
+ * requires a `lazy()`-wrapped factory — a bare `() => import(...)` record
+ * (which RouteRecordRaw's type still admits) renders null with a console
+ * warning. A beforeResolve hook preloads matched lazy components so
+ * navigations (and the SSR render) settle only after the chunk is loaded —
+ * SSR renders the real page, hydration matches, client-side switches never
+ * flash a blank frame.
  */
+import { lazy, isLazyComponent } from 'sigx';
 import { createRouter, createWebHistory, createMemoryHistory } from '@sigx/router';
 import type { Router } from '@sigx/router';
 import { useSessionStore } from './stores/session';
@@ -12,9 +19,16 @@ import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { NotFound } from './pages/NotFound';
 
+const BoardPage = lazy(() => import('./board/BoardPage'));
+
 export const routes = [
     { path: '/', name: 'dashboard', component: Dashboard, meta: { requiresAuth: true } },
     { path: '/login', name: 'login', component: Login },
+    // ONE lazy page for both board shapes; BoardPage validates :view
+    // (board|list|roadmap|sprint|backlog, default 'board') and renders
+    // NotFound — a real 404 — for anything else.
+    { path: '/b/:owner/:repo', name: 'board', component: BoardPage, meta: { requiresAuth: true } },
+    { path: '/b/:owner/:repo/:view', name: 'board-view', component: BoardPage, meta: { requiresAuth: true } },
     // Real catch-all 404: router#58 (fixed in @sigx/router 0.9.0) means the
     // literal '/' now outranks this wildcard, so it no longer shadows the
     // home route. Anything unmatched renders NotFound (which sets HTTP 404).
@@ -38,6 +52,18 @@ function attachGuards(router: Router): Router {
         if (!user) {
             return `/login?returnTo=${encodeURIComponent(to.fullPath)}`;
         }
+    });
+    // Preload lazy route chunks BEFORE the navigation settles (see the
+    // module comment) — router.isReady() therefore also waits for them.
+    router.beforeResolve(async (to) => {
+        await Promise.all(to.matched.map((m) => {
+            const c = m.component;
+            // isLazyComponent's `any` predicate can't narrow the record
+            // union, so reach for preload() through a structural view.
+            return c && isLazyComponent(c)
+                ? (c as unknown as { preload(): Promise<unknown> }).preload()
+                : Promise.resolve();
+        }));
     });
     return router;
 }

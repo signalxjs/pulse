@@ -9,8 +9,9 @@
 Pulse is a real application and, deliberately, SignalX's scale proving
 ground: it wires the WHOLE published stack together — `sigx` core, streaming
 SSR (`@sigx/server-renderer`), `@sigx/router` (per core's router-SSR
-contract), `@sigx/store`, `@sigx/cache`, and `@sigx/daisyui` — against the
-GitHub API. Every framework gap it uncovers is filed on the owning repo and
+contract), `@sigx/store`, and `@sigx/cache` — against the GitHub API.
+(`@sigx/daisyui` was part of the mix through M1; pulse#39 retired it for a
+bespoke dark design system, per the design handoff.) Every framework gap it uncovers is filed on the owning repo and
 logged in [`docs/findings.md`](docs/findings.md).
 
 ## Layout

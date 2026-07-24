@@ -51,50 +51,59 @@ export const Login = component((ctx) => {
 
     return () => (
         <div class="flex justify-center pt-16">
-            <div class="card bg-base-100 w-96 shadow-xl">
-                <div class="card-body items-center text-center">
-                    <h2 class="card-title">Sign in to Pulse</h2>
-                    {session.user ? (
-                        <p class="text-sm">
-                            Signed in as <b>{session.user.login}</b> — <Link class="link" to="/">go to the dashboard</Link>.
-                        </p>
-                    ) : (
-                        <>
-                            {/* ?pat=1 = the server told us OAuth isn't
-                                configured — the OAuth button would bounce
-                                straight back here. */}
-                            {query.pat !== '1' && (
-                                <>
-                                    <a
-                                        class="btn btn-primary w-full"
-                                        href={`/auth/login?returnTo=${encodeURIComponent(returnTo())}`}
-                                    >
-                                        Continue with GitHub
-                                    </a>
-                                    <div class="divider text-xs opacity-60">or use a token</div>
-                                </>
-                            )}
-                            {query.pat === '1' && (
-                                <p class="text-xs opacity-60">OAuth isn't configured on this server — sign in with a token.</p>
-                            )}
-                            <form class="w-full space-y-2" onSubmit={signInWithPat}>
-                                {/* Two-way: the sigx vite transform compiles
-                                    the model getter into a get/set pair —
-                                    verified: typed input reaches the POST. */}
-                                <input
-                                    class="input input-bordered w-full"
-                                    type="password"
-                                    placeholder="GitHub personal access token"
-                                    model={() => token.value}
-                                />
-                                <button class="btn btn-outline w-full" type="submit" disabled={pending.value}>
-                                    {pending.value ? 'Signing in…' : 'Sign in with token'}
-                                </button>
-                            </form>
-                            {error.value && <p class="text-error text-sm">{error.value}</p>}
-                        </>
-                    )}
-                </div>
+            <div class="flex w-96 flex-col items-center gap-4 rounded-[14px] border border-bd bg-bg1 px-6 py-7 text-center">
+                <span class="flex size-9 items-center justify-center rounded-[10px] bg-ac shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
+                    <span class="size-2.5 animate-pulse-dot rounded-full bg-white" />
+                </span>
+                <h2 class="text-[17px] font-bold tracking-[-.01em]">Sign in to Pulse</h2>
+                {session.user ? (
+                    <p class="text-[12.5px] text-tm">
+                        Signed in as <b class="text-tx">{session.user.login}</b> — <Link to="/">go to the dashboard</Link>.
+                    </p>
+                ) : (
+                    <>
+                        {/* ?pat=1 = the server told us OAuth isn't
+                            configured — the OAuth button would bounce
+                            straight back here. */}
+                        {query.pat !== '1' && (
+                            <>
+                                <a
+                                    class="w-full rounded-lg bg-ac px-3 py-2 text-center text-[12.5px] font-semibold text-white hover:text-white hover:brightness-[1.08]"
+                                    href={`/auth/login?returnTo=${encodeURIComponent(returnTo())}`}
+                                >
+                                    Continue with GitHub
+                                </a>
+                                <div class="flex w-full items-center gap-3 text-[10.5px] uppercase tracking-[.08em] text-tf">
+                                    <span class="h-px flex-1 bg-bd" />
+                                    or use a token
+                                    <span class="h-px flex-1 bg-bd" />
+                                </div>
+                            </>
+                        )}
+                        {query.pat === '1' && (
+                            <p class="text-[11px] text-tf">OAuth isn't configured on this server — sign in with a token.</p>
+                        )}
+                        <form class="w-full space-y-2" onSubmit={signInWithPat}>
+                            {/* Two-way: the sigx vite transform compiles
+                                the model getter into a get/set pair —
+                                verified: typed input reaches the POST. */}
+                            <input
+                                class="w-full rounded-lg border border-bd bg-bg2 px-2.5 py-2 text-[12.5px] text-tx outline-none placeholder:text-tf focus:border-ac"
+                                type="password"
+                                placeholder="GitHub personal access token"
+                                model={() => token.value}
+                            />
+                            <button
+                                class="w-full cursor-pointer rounded-lg border border-bd bg-bg2 px-3 py-2 text-[12.5px] font-semibold text-tm hover:border-bds hover:text-tx disabled:opacity-60"
+                                type="submit"
+                                disabled={pending.value}
+                            >
+                                {pending.value ? 'Signing in…' : 'Sign in with token'}
+                            </button>
+                        </form>
+                        {error.value && <p class="text-[12px] text-[oklch(0.72_0.16_25)]">{error.value}</p>}
+                    </>
+                )}
             </div>
         </div>
     );

@@ -48,6 +48,6 @@ export default defineConfig(({ command }) => ({
     },
     ...(command === 'serve' && {
         resolve: { alias: devAliases },
-        ssr: { noExternal: ['sigx', '@sigx/server-renderer', '@sigx/router', '@sigx/store', '@sigx/daisyui'] }
+        ssr: { noExternal: ['sigx', '@sigx/server-renderer', '@sigx/router', '@sigx/store'] }
     })
 }));

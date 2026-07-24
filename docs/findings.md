@@ -109,7 +109,7 @@ ships exactly that dev-warning and its changelog documents Pulse's pattern
 as the recommended shape for request state — the workaround graduated into
 the blessed pattern. Pulse is on 0.11.0 as of pulse#24.
 
-### F11 — @sigx/daisyui ThemeProvider has no SSR story → theme FOUC (R3 · daisyui#51)
+### F11 — @sigx/daisyui ThemeProvider has no SSR story → theme FOUC (R3 · daisyui#51 · closed for Pulse by pulse#39)
 `ThemeProvider` sets `data-theme` client-side only (its setup is guarded by
 `typeof document !== 'undefined'`), so under SSR it renders a bare `<div>`
 and never themes the document. Every full document load paints daisyUI's
@@ -123,8 +123,13 @@ internals (the `daisy-theme` storage key, the `prefers-color-scheme`
 fallback order, the default theme name). Suggested upstream: export an
 SSR-safe theme-init snippet apps can inline, or let ThemeProvider emit
 `data-theme` server-side from a cookie.
+**Closed out for Pulse (pulse#39, product decision):** the design handoff made
+Pulse dark-only with a bespoke token system, so daisyUI (and ThemeProvider)
+retired from the app entirely — the anti-FOUC story collapsed to one static
+inline `background:#0c0d11` on `<html>`. The upstream gap (daisyui#51) still
+stands for apps that keep ThemeProvider.
 
-### F12 — no `@sigx/daisyui` release for core 0.12 (R1 · to file on daisyui)
+### F12 — no `@sigx/daisyui` release for core 0.12 (R1 · to file on daisyui · closed for Pulse by pulse#39)
 The core-0.12 upgrade (pulse#18) took core→0.12.0, router→0.9.0,
 store→0.9.0, but `@sigx/daisyui` tops out at 0.8.0, whose peers cap at
 `>=0.10.0 <0.11.0`. Installing against core 0.12 leaves an unmet-peer
@@ -134,6 +139,9 @@ and hydrates fine, and `pnpm why -r @sigx/reactivity` shows one 0.12.0 — so
 the app runs, but the ecosystem again can't follow a core release without a
 daisyui alignment bump (same lockstep-release gap as F1). Pulse holds
 daisyui at 0.8.0 until a 0.12-compatible release ships.
+**Closed out for Pulse (pulse#39, product decision):** daisyUI retired from
+Pulse with the bespoke design-system PR — the dependency (and the unmet-peer
+warning) is gone. The lockstep-release gap remains a daisyui-repo concern.
 
 ### F13 — serverFn platform adoption: ambient SSR context held in both modes (R4 · validated, no issue)
 The risk-gate question of pulse#34 — does an in-process SSR call resolve
@@ -193,6 +201,15 @@ notes on the adapter itself:
   never touched either; its `generate()` drift checks (main / assets dir /
   html_handling substrings) all passed silently. The validate-don't-write
   behavior on an existing config is exactly right for a real app.
+- **`collectAssets` is node-locked** (hit at pulse#39's rebase): the worker
+  entry needs per-route chunk preloads, and `virtual:sigx-app` helpfully
+  exports the client `manifest` — but the traversal helper that turns it
+  into preload lists, `collectAssets`, is only exported from
+  `@sigx/vite/ssr`, whose module top-level imports `node:fs/promises` and
+  `node:path`. Under the workerd-conditioned bundle that graph cannot
+  resolve, so Pulse carries a WinterCG port (`app/src/collect-assets.ts`).
+  The helper is pure — upstream should export it from a platform-clean
+  module (candidate core issue).
 - **The `html_handling` gotcha never fired** — but only because the
   starter-config comment chain flows into rfc-deploy and the examples;
   copying the resume example's `"none"` from day one meant the raw outlet

@@ -1,36 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="dim">
+<!--
+  Anti-FOUC: Pulse is DARK-ONLY by design (pulse#39 — the handoff has a
+  single dark palette, no theme switch), so the pre-paint theming problem
+  daisyUI needed a blocking script for (pulse#14 / findings F11) reduces to
+  one static inline background on <html>: the first paint is bg0 before any
+  stylesheet or script arrives, no resolution logic required. Keep the
+  value in sync with --color-bg0 in src/styles.css.
+-->
+<html lang="en" style="background: #0c0d11">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Pulse</title>
-        <!--
-          Anti-FOUC: theme the document BEFORE first paint. The SSR shell is
-          static and @sigx/daisyui's ThemeProvider only sets `data-theme`
-          client-side (during hydration), so without this the browser paints
-          the unthemed default (white) for a frame before the dark theme snaps
-          in — most visibly right after sign-in, which is a full-page load.
-          This blocking script mirrors ThemeProvider's own resolution exactly
-          (localStorage 'daisy-theme' → OS preference → the 'dim' default), so
-          the first paint already matches what hydration computes: no flash, no
-          dim→dark jump, no hydration mismatch. Keep 'dim' in sync with App.tsx's
-          <ThemeProvider defaultTheme="dim" darkMode>; the <html data-theme="dim">
-          above is the no-JS fallback.
-        -->
-        <script>
-            (function () {
-                try {
-                    var t =
-                        localStorage.getItem('daisy-theme') ||
-                        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-                            ? 'dark'
-                            : 'dim');
-                    document.documentElement.setAttribute('data-theme', t);
-                } catch (e) {
-                    /* localStorage blocked (private mode) — keep the 'dim' fallback. */
-                }
-            })();
-        </script>
     </head>
     <body>
         <div id="app"><!--ssr-outlet--></div>

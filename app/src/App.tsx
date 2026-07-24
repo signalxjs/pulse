@@ -1,14 +1,15 @@
 import { component } from 'sigx';
 import { RouterView, Link, useRoute, useRouter } from '@sigx/router';
 import { useResponse } from '@sigx/server-renderer';
-import { ThemeProvider } from '@sigx/daisyui';
 import { useSessionStore } from './stores/session';
 import { useRequestUser } from './session';
 
 /**
- * The Pulse app shell — top navigation + the routed page. Everything below
- * the navbar renders through RouterView; nested layouts (repo tabs, board)
- * mount their own RouterView per the route table.
+ * The Pulse app shell. Two layouts (pulse#39): board routes (/b/…) render
+ * bare — BoardPage owns the full-viewport planner chrome (handoff §Global
+ * Layout: no page scroll, panes scroll internally) — while everything else
+ * (login, dashboard, 404) gets the minimal top bar. daisyUI is retired;
+ * styling is the token utilities from styles.css.
  */
 export const App = component(() => {
     const route = useRoute();
@@ -36,30 +37,44 @@ export const App = component(() => {
         window.location.href = '/login';
     }
 
-    return () => (
-        <ThemeProvider defaultTheme="dim" darkMode>
-            <div class="min-h-screen bg-base-200">
-                <div class="navbar bg-base-100 shadow-sm">
-                    <div class="flex-1">
-                        <Link to="/" class="btn btn-ghost text-xl">
-                            <span class="text-primary">●</span> Pulse
-                        </Link>
-                    </div>
-                    <div class="flex-none">
+    return () => {
+        // The planner shell is the whole viewport — no app chrome around it.
+        if (route.path.startsWith('/b/')) {
+            return <RouterView />;
+        }
+        return (
+            <div class="min-h-dvh bg-bg0 text-tx">
+                <div data-app-header class="flex items-center justify-between border-b border-bd bg-bg1 px-4 py-2.5">
+                    <Link to="/" class="flex items-center gap-2.5 text-tx hover:text-tx">
+                        <span class="flex size-[26px] items-center justify-center rounded-[8px] bg-ac shadow-[0_0_0_1px_rgba(255,255,255,.06)_inset]">
+                            <span class="size-2 animate-pulse-dot rounded-full bg-white" />
+                        </span>
+                        <span class="flex flex-col leading-[1.1]">
+                            <span class="text-[15px] font-bold tracking-[-.01em]">Pulse</span>
+                            <span class="text-[11px] font-normal text-tf">Planning workspace</span>
+                        </span>
+                    </Link>
+                    <div class="flex items-center gap-3">
                         {session.user ? (
-                            <div class="flex items-center gap-2">
+                            <>
                                 <img
                                     src={session.user.avatarUrl}
                                     alt={session.user.login}
-                                    class="w-8 rounded-full"
+                                    class="size-[26px] rounded-full shadow-[0_0_0_2px_var(--color-bg1)]"
                                 />
-                                <span class="text-sm opacity-80">{session.user.login}</span>
-                                <button class="btn btn-ghost btn-sm" onClick={signOut}>
+                                <span class="text-[12.5px] text-tm">{session.user.login}</span>
+                                <button
+                                    class="cursor-pointer rounded-lg border border-bd bg-bg2 px-2.5 py-1.5 text-[12.5px] text-tm hover:border-bds hover:text-tx"
+                                    onClick={signOut}
+                                >
                                     Sign out
                                 </button>
-                            </div>
+                            </>
                         ) : (
-                            <Link to="/login" class="btn btn-ghost btn-sm">
+                            <Link
+                                to="/login"
+                                class="rounded-lg border border-bd bg-bg2 px-2.5 py-1.5 text-[12.5px] text-tm hover:border-bds hover:text-tx"
+                            >
                                 Sign in
                             </Link>
                         )}
@@ -71,6 +86,6 @@ export const App = component(() => {
                     <RouterView />
                 </main>
             </div>
-        </ThemeProvider>
-    );
+        );
+    };
 }, { name: 'App' });

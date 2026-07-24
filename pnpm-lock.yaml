@@ -59,6 +59,12 @@ importers:
 
   app:
     dependencies:
+      '@fontsource-variable/hanken-grotesk':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource-variable/jetbrains-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@pulse/auth':
         specifier: workspace:*
         version: link:../packages/auth
@@ -71,9 +77,6 @@ importers:
       '@sigx/cache':
         specifier: 'catalog:'
         version: 0.13.0
-      '@sigx/daisyui':
-        specifier: ^0.10.0
-        version: 0.10.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)(@sigx/runtime-dom@0.13.0)(daisyui@5.6.18)(sigx@0.13.0)(tailwindcss@4.3.3)
       '@sigx/reactivity':
         specifier: 'catalog:'
         version: 0.13.0
@@ -95,9 +98,6 @@ importers:
       '@sigx/store':
         specifier: ^0.11.0
         version: 0.11.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)
-      daisyui:
-        specifier: ^5.5.14
-        version: 5.6.18
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -372,6 +372,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource-variable/hanken-grotesk@5.3.0':
+    resolution: {integrity: sha512-DOd0FqL+3cH2dfNy0JtSq9tUfxBz5mLmHMjTU0DOr3E9Zo6wxuatCl53DIPNrSPgCsnuKyM739BTIG5glCLirw==}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -805,16 +811,6 @@ packages:
       wrangler:
         optional: true
 
-  '@sigx/daisyui@0.10.0':
-    resolution: {integrity: sha512-41fYhyLO6tfdm9qUMZpZAztI1UPII0Aw4WJDzWEXqWRmBupS9ZSms1g0BTAP+HpsBxvZ7yY0UzHRK63AvvOYvg==}
-    peerDependencies:
-      '@sigx/reactivity': ^0.13.0
-      '@sigx/runtime-core': ^0.13.0
-      '@sigx/runtime-dom': ^0.13.0
-      daisyui: '>=5.0.0'
-      sigx: ^0.13.0
-      tailwindcss: '>=4.0.0'
-
   '@sigx/reactivity@0.13.0':
     resolution: {integrity: sha512-JdGq11ZJDMgJmIqa4mcFH9vyhWORABxq/LXE6GfYG0v2Htll+j7yzw/UXMagWvo2BeHquDaL6pDexuznAxjWsg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1242,9 +1238,6 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
-
-  daisyui@5.6.18:
-    resolution: {integrity: sha512-6y9rboRQl8fosnusy/5pg11yp+H0LtK3YdtfS4Vf2QVnaYOKasNdYm6hDxeiT6bwZPdl4WRPzVIlIApdo2ssBg==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -2025,6 +2018,10 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
+  '@fontsource-variable/hanken-grotesk@5.3.0': {}
+
+  '@fontsource-variable/jetbrains-mono@5.3.0': {}
+
   '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.2':
@@ -2295,15 +2292,6 @@ snapshots:
       vite: 8.1.5(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)
     optionalDependencies:
       wrangler: 4.114.0
-
-  '@sigx/daisyui@0.10.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)(@sigx/runtime-dom@0.13.0)(daisyui@5.6.18)(sigx@0.13.0)(tailwindcss@4.3.3)':
-    dependencies:
-      '@sigx/reactivity': 0.13.0
-      '@sigx/runtime-core': 0.13.0
-      '@sigx/runtime-dom': 0.13.0
-      daisyui: 5.6.18
-      sigx: 0.13.0
-      tailwindcss: 4.3.3
 
   '@sigx/reactivity@0.13.0': {}
 
@@ -2649,8 +2637,6 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
-
-  daisyui@5.6.18: {}
 
   debug@4.4.3:
     dependencies:
