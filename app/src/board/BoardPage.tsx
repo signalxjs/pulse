@@ -132,6 +132,12 @@ const BoardPage = component(() => {
     // ---- New-issue modal (pulse#54): local state — nothing else reads it.
     const newIssue = signal<{ open: boolean; status: BoardStatusId | null }>({ open: false, status: null });
     const openNewIssue = (status: BoardStatusId | null = null) => {
+        // The modal maps priority/status through the board config — a dead
+        // click otherwise (it only mounts when configured). Nudge to setup.
+        if (!configured()) {
+            ui.showToast('Set up the board before creating issues');
+            return;
+        }
         newIssue.status = status;
         newIssue.open = true;
     };

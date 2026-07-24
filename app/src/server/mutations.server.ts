@@ -265,7 +265,17 @@ export async function applyCreate(
         ...(body !== undefined && { body }),
         ...(labels.length > 0 && { labels })
     });
-    return close ? gh.updateIssue(owner, repo, issue.number, { state: 'closed' }) : issue;
+    if (!close) return issue;
+    // The issue already exists — if the follow-up close fails, DON'T reject
+    // the whole call: that would let the client retry and create a
+    // duplicate. Return the created (still-open) issue; the user can drag
+    // it to Done. The board's derivation lands it in the mapped column
+    // regardless of state.
+    try {
+        return await gh.updateIssue(owner, repo, issue.number, { state: 'closed' });
+    } catch {
+        return issue;
+    }
 }
 
 /**
