@@ -80,6 +80,19 @@ export function moveLabels(
     return { labels, state: 'open' };
 }
 
+/**
+ * Whether a drop on this column can PERSIST. A label-mapped column always
+ * can; unmapped `done` (close) and `todo` (the open-issue default) derive
+ * from state alone. Any other unmapped column would silently land the
+ * issue back in the default status on reload — so it must not accept
+ * drops (and the server rejects it) until setup maps a label to it.
+ */
+export function canRepresent(config: BoardConfig, targetStatusId: BoardStatusId): boolean {
+    const target = config.statuses.find((s) => s.id === targetStatusId);
+    if (target?.label != null) return true;
+    return targetStatusId === 'done' || targetStatusId === 'todo';
+}
+
 /** The mapped status/priority label names (lowercased) — represented by
  *  columns and P-chips, so never rendered as tag pills. */
 function mappedLabelSet(config: BoardConfig | null): Set<string> {

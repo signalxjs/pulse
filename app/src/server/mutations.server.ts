@@ -11,7 +11,7 @@ import type { BoardConfig, BoardStatusId } from '@pulse/db';
 import { GitHubApiError, type GitHubClient, type GitHubIssue } from '@pulse/github';
 import { boardKeys } from '../board/keys';
 import { STATUS_IDS } from '../board/detect';
-import { moveLabels } from '../board/derive';
+import { canRepresent, moveLabels } from '../board/derive';
 import { authed, withAuth } from './auth.server';
 import { services } from './services.server';
 
@@ -165,6 +165,9 @@ export async function applyMove(
     number: number,
     target: BoardStatusId
 ): Promise<GitHubIssue> {
+    if (!canRepresent(config, target)) {
+        throw new ServerFnError(400, `the ${target} column has no mapped label — map one in setup before moving cards there`);
+    }
     const issue = await gh.issue(owner, repo, number);
     if (!issue) {
         throw new ServerFnError(404, `issue #${number} does not exist in ${owner}/${repo}`);

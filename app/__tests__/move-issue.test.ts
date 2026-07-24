@@ -73,3 +73,26 @@ describe('applyMove (moveIssue core) over the fixtures client', () => {
             .rejects.toThrow(/does not exist/);
     });
 });
+
+describe('canRepresent', () => {
+    it('label-mapped columns and state-derivable done/todo accept drops; other unmapped columns do not', async () => {
+        const { canRepresent } = await import('../src/board/derive');
+        const config = {
+            version: 1 as const, owner: 'o', repo: 'r',
+            statuses: [
+                { id: 'backlog' as const, label: null },
+                { id: 'todo' as const, label: null },
+                { id: 'inprogress' as const, label: 'status: in progress' },
+                { id: 'inreview' as const, label: null },
+                { id: 'done' as const, label: null }
+            ],
+            priorities: { p0: null, p1: null, p2: null, p3: null },
+            cycleSource: 'none' as const, closeOnDone: true, createdBy: null
+        };
+        expect(canRepresent(config, 'inprogress')).toBe(true);
+        expect(canRepresent(config, 'done')).toBe(true);
+        expect(canRepresent(config, 'todo')).toBe(true);
+        expect(canRepresent(config, 'backlog')).toBe(false);
+        expect(canRepresent(config, 'inreview')).toBe(false);
+    });
+});

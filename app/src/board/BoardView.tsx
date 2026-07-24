@@ -2,7 +2,7 @@ import { component, signal, type Define } from 'sigx';
 import type { BoardConfig, BoardStatusId } from '@pulse/db';
 import type { GitHubIssue } from '@pulse/github';
 import { STATUSES } from './colors';
-import { sortByPriority, statusOf } from './derive';
+import { canRepresent, sortByPriority, statusOf } from './derive';
 import { IssueCard } from './components/IssueCard';
 
 type BoardViewProps =
@@ -38,6 +38,10 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                 {STATUSES.map((s) => {
                     const cards = sortByPriority(byStatus.get(s.id) ?? [], config);
                     const over = drag.over === s.id;
+                    // A column that can't persist a drop (unmapped, not
+                    // state-derivable) doesn't accept one — see
+                    // derive.canRepresent; setup maps a label to unlock it.
+                    const droppable = canRepresent(props.config, s.id);
                     return (
                         <section key={s.id} data-column={s.id} class="flex h-full w-[292px] min-h-0 shrink-0 flex-col">
                             <div class="flex items-center gap-2 px-1 pt-0.5 pb-2.5">
@@ -47,10 +51,14 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                                     {cards.length}
                                 </span>
                                 <div class="flex-1" />
+                                {/* Disabled until the new-issue flow lands
+                                    (pulse#54) — an enabled-looking button
+                                    that does nothing misleads. */}
                                 <button
                                     type="button"
-                                    aria-label={`New issue in ${s.name}`}
-                                    class="size-[22px] cursor-pointer rounded-md text-base leading-none text-tf hover:bg-bg2 hover:text-tx"
+                                    disabled
+                                    aria-label={`New issue in ${s.name} (coming soon)`}
+                                    class="size-[22px] rounded-md text-base leading-none text-tf opacity-50"
                                 >
                                     +
                                 </button>
@@ -59,8 +67,8 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                                 data-drop-list
                                 onDragOver={(e: DragEvent) => {
                                     e.preventDefault();
-                                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-                                    if (drag.over !== s.id) drag.over = s.id;
+                                    if (e.dataTransfer) e.dataTransfer.dropEffect = droppable ? 'move' : 'none';
+                                    if (droppable && drag.over !== s.id) drag.over = s.id;
                                 }}
                                 onDragLeave={(e: DragEvent) => {
                                     // Only when the drag truly leaves the list —
@@ -72,6 +80,7 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                                 onDrop={(e: DragEvent) => {
                                     e.preventDefault();
                                     drag.over = null;
+                                    if (!droppable) return;
                                     const n = Number(e.dataTransfer?.getData('text/plain'));
                                     if (Number.isInteger(n) && n > 0) props.onMove(n, s.id);
                                 }}
