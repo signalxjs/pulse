@@ -7,10 +7,11 @@
  */
 import { serverFn, ServerFnError } from '@sigx/server';
 import * as v from 'valibot';
-import type { BoardConfig } from '@pulse/db';
-import { GitHubApiError } from '@pulse/github';
+import type { BoardConfig, BoardStatusId } from '@pulse/db';
+import { GitHubApiError, type GitHubClient, type GitHubIssue } from '@pulse/github';
 import { boardKeys } from '../board/keys';
 import { STATUS_IDS } from '../board/detect';
+import { canRepresent, moveLabels } from '../board/derive';
 import { authed, withAuth } from './auth.server';
 import { services } from './services.server';
 
@@ -140,4 +141,58 @@ export const createMissingLabels = serverFn({
         boardKeys.labels(input.owner, input.repo),
         boardKeys.detect(input.owner, input.repo)
     ]
+});
+
+const MoveIssueInput = v.object({
+    owner: segment,
+    repo: segment,
+    number: v.pipe(v.number(), v.integer(), v.minValue(1)),
+    /** The drop column — the status the issue moves to. */
+    target: v.picklist(STATUS_IDS)
+});
+
+/**
+ * The move computation `moveIssue` runs once auth + config are resolved —
+ * exported separately so it unit-tests over the fixtures client. Reads the
+ * CURRENT issue through the (ETag-cached) client, derives the label/state
+ * patch with derive.moveLabels, and applies it in ONE updateIssue PATCH.
+ */
+export async function applyMove(
+    gh: GitHubClient,
+    config: BoardConfig,
+    owner: string,
+    repo: string,
+    number: number,
+    target: BoardStatusId
+): Promise<GitHubIssue> {
+    if (!canRepresent(config, target)) {
+        throw new ServerFnError(400, `the ${target} column has no mapped label — map one in setup before moving cards there`);
+    }
+    const issue = await gh.issue(owner, repo, number);
+    if (!issue) {
+        throw new ServerFnError(404, `issue #${number} does not exist in ${owner}/${repo}`);
+    }
+    const patch = moveLabels(config, issue.labels.map((l) => l.name), target);
+    return gh.updateIssue(owner, repo, number, patch);
+}
+
+/**
+ * Drag a card to another column: swap the mapped status labels (and
+ * close/reopen per the config) in one atomic PATCH. The config comes from
+ * the server-side store — never from the client — so a tampered wire
+ * payload cannot rewrite the label mapping. Returns the updated issue as
+ * GitHub answers it: the caller's optimistic-UI reconcile source.
+ */
+export const moveIssue = serverFn({
+    use: [withAuth],
+    input: MoveIssueInput,
+    async handler(rq, { owner, repo, number, target }): Promise<GitHubIssue> {
+        const { gh } = authed(rq);
+        const config = await services().configStore.getBoard(owner, repo);
+        if (!config) {
+            throw new ServerFnError(404, `no board is configured for ${owner}/${repo}`);
+        }
+        return applyMove(gh, config, owner, repo, number, target);
+    },
+    invalidates: (input) => [boardKeys.issues(input.owner, input.repo)]
 });

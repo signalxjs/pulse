@@ -11,7 +11,8 @@ import type { BoardConfig, BoardStatusId } from '@pulse/db';
 import { detectBoard } from '../src/board/detect';
 import {
     statusOf, priorityOf, moveLabels, cyclesFrom, currentCycle, sprintStats,
-    roadmapWindowStart, roadmapSlot, labelsFor, peopleFor
+    roadmapWindowStart, roadmapSlot, labelsFor, peopleFor,
+    cardLabels, filterIssues, sortByPriority
 } from '../src/board/derive';
 
 // Vitest runs from the repo root (import.meta.url is not a file: URL under
@@ -253,5 +254,78 @@ describe('chrome lists', () => {
     it('peopleFor splits separator-carrying logins into two-letter monograms', () => {
         const [p] = peopleFor([{ login: 'good-first', avatarUrl: '' }], []);
         expect(p!.initials).toBe('GF');
+    });
+});
+
+describe('filterIssues (the live view filter — Board and List share it)', () => {
+    it('matches a case-insensitive title substring', () => {
+        const hits = filterIssues(issues, { query: 'SANITIZE', filterLabel: null });
+        expect(hits.map((i) => i.number)).toEqual([511]);
+    });
+
+    it('matches an issue-number prefix, with and without the # form', () => {
+        const bare = filterIssues(issues, { query: '51', filterLabel: null }).map((i) => i.number);
+        expect(bare.sort()).toEqual([511, 513]);
+        const hashed = filterIssues(issues, { query: '#51', filterLabel: null }).map((i) => i.number);
+        expect(hashed.sort()).toEqual([511, 513]);
+        expect(filterIssues(issues, { query: '#513', filterLabel: null }).map((i) => i.number)).toEqual([513]);
+    });
+
+    it('filters by the active label name', () => {
+        const bugs = filterIssues(issues, { query: '', filterLabel: 'bug' });
+        expect(bugs).toHaveLength(8);
+        expect(bugs.every((i) => i.labels.some((l) => l.name === 'bug'))).toBe(true);
+    });
+
+    it('applies query and label together, and a blank query passes everything', () => {
+        const both = filterIssues(issues, { query: 'tooltip', filterLabel: 'bug' });
+        expect(both.map((i) => i.number)).toEqual([506]);
+        expect(filterIssues(issues, { query: '  ', filterLabel: null })).toHaveLength(issues.length);
+    });
+});
+
+describe('sortByPriority (card/row order)', () => {
+    it('orders priority ascending then number descending across the todo column', () => {
+        const todo = issues.filter((i) => statusOf(i, config) === 'todo');
+        expect(sortByPriority(todo, config).map((i) => i.number)).toEqual([511, 501, 513, 490]);
+    });
+
+    it('puts unprioritized issues last', () => {
+        const unprioritized = withLabels('bug');
+        const p3 = { ...withLabels('P3'), number: 2 };
+        expect(sortByPriority([unprioritized, p3], config).map((i) => i.number)).toEqual([2, 1]);
+    });
+
+    it('does not mutate its input', () => {
+        const todo = issues.filter((i) => statusOf(i, config) === 'todo');
+        const before = todo.map((i) => i.number);
+        sortByPriority(todo, config);
+        expect(todo.map((i) => i.number)).toEqual(before);
+    });
+});
+
+describe('cardLabels (the tag pills one card/row renders)', () => {
+    it('drops the config-mapped status/priority labels, keeps the tags with real hues', () => {
+        const i511 = issues.find((i) => i.number === 511)!;
+        const pills = cardLabels(i511, config);
+        expect(pills.map((p) => p.name)).toEqual(['security', 'bug']);
+        for (const p of pills) {
+            expect(p.hue).not.toBeNull();
+            expect(p.hue).toBeGreaterThanOrEqual(0);
+            expect(p.hue).toBeLessThan(360);
+        }
+    });
+
+    it('marks achromatic and malformed label colors with a null hue (neutral pill)', () => {
+        const grey = issue({ labels: [{ name: 'wontfix', color: 'cccccc', description: null }] });
+        expect(cardLabels(grey, config)).toEqual([{ key: 'wontfix', name: 'wontfix', hue: null }]);
+        const bad = issue({ labels: [{ name: 'odd', color: 'not-a-hex', description: null }] });
+        expect(cardLabels(bad, config)![0]!.hue).toBeNull();
+    });
+
+    it('keeps every label when no config exists', () => {
+        const i511 = issues.find((i) => i.number === 511)!;
+        expect(cardLabels(i511, null).map((p) => p.name))
+            .toEqual(['security', 'bug', 'status: todo', 'P0']);
     });
 });
