@@ -12,6 +12,7 @@
 // Real-Chrome UA throughout: HeadlessChrome matches the isBot regex and
 // would get the blocking document instead of the streaming human path.
 import { spawn, spawnSync } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -63,6 +64,10 @@ function startNodeServer() {
 
 function startWorkerd() {
     const env = { ...process.env, WRANGLER_SEND_METRICS: 'false' };
+    // Deterministic every run: wrangler --local persists D1 state across
+    // runs (.wrangler/state), so a previous smoke's saved board config
+    // would break the setup-redirect assertions. Start from nothing.
+    rmSync(new URL('.wrangler/state', import.meta.url), { recursive: true, force: true });
     // Schema first: the worker never applies migrations itself (wrangler
     // owns the schema on this target). --local writes .wrangler/state, the
     // same store `wrangler dev` reads below.
