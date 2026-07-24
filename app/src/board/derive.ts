@@ -90,7 +90,10 @@ export function moveLabels(
 export function canRepresent(config: BoardConfig, targetStatusId: BoardStatusId): boolean {
     const target = config.statuses.find((s) => s.id === targetStatusId);
     if (target?.label != null) return true;
-    return targetStatusId === 'done' || targetStatusId === 'todo';
+    // Unmapped `done` persists only through CLOSING the issue — with
+    // closeOnDone off, nothing would record the move.
+    if (targetStatusId === 'done') return config.closeOnDone;
+    return targetStatusId === 'todo';
 }
 
 /** The mapped status/priority label names (lowercased) — represented by

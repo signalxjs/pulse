@@ -94,5 +94,8 @@ describe('canRepresent', () => {
         expect(canRepresent(config, 'todo')).toBe(true);
         expect(canRepresent(config, 'backlog')).toBe(false);
         expect(canRepresent(config, 'inreview')).toBe(false);
+        // Unmapped done persists only via closing — closeOnDone off makes
+        // the move unrecordable.
+        expect(canRepresent({ ...config, closeOnDone: false }, 'done')).toBe(false);
     });
 });
