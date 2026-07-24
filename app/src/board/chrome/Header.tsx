@@ -23,8 +23,9 @@ export const Header = component<HeaderProps>(({ props }) => {
         <header data-board-header class="flex shrink-0 items-center gap-3 border-b border-bd px-[18px] py-[11px]">
             <button
                 type="button"
-                aria-label="Open navigation"
-                onClick={() => ui.setNavOpen(true)}
+                aria-label={ui.navOpen ? 'Close navigation' : 'Open navigation'}
+                aria-expanded={ui.navOpen}
+                onClick={() => ui.setNavOpen(!ui.navOpen)}
                 class="flex size-8 shrink-0 cursor-pointer flex-col items-center justify-center gap-[3px] rounded-lg border border-bd bg-bg2 text-tm min-[900px]:hidden"
             >
                 <span class="h-[1.6px] w-3.5 rounded-sm bg-current" />
