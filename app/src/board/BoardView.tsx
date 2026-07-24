@@ -11,7 +11,11 @@ type BoardViewProps =
     Define.Prop<'config', BoardConfig, true> &
     Define.Prop<'loading', boolean> &
     /** Fired on drop: move `number` to the `target` column. */
-    Define.Prop<'onMove', (number: number, target: BoardStatusId) => void, true>;
+    Define.Prop<'onMove', (number: number, target: BoardStatusId) => void, true> &
+    /** Fired on card click: open the detail slide-over for `number`. */
+    Define.Prop<'onOpen', (number: number) => void, true> &
+    /** Fired by a column's + button: new issue preselecting that status. */
+    Define.Prop<'onNew', (status: BoardStatusId) => void, true>;
 
 /**
  * The kanban board (handoff §4): five 292px columns over the derived
@@ -51,14 +55,18 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                                     {cards.length}
                                 </span>
                                 <div class="flex-1" />
-                                {/* Disabled until the new-issue flow lands
-                                    (pulse#54) — an enabled-looking button
-                                    that does nothing misleads. */}
+                                {/* Enabled exactly where a drop would be:
+                                    a column that can't PERSIST a placement
+                                    can't take a new issue either. */}
                                 <button
                                     type="button"
-                                    disabled
-                                    aria-label={`New issue in ${s.name} (coming soon)`}
-                                    class="size-[22px] rounded-md text-base leading-none text-tf opacity-50"
+                                    disabled={!droppable}
+                                    onClick={() => props.onNew(s.id)}
+                                    aria-label={`New issue in ${s.name}`}
+                                    class={
+                                        'size-[22px] rounded-md text-base leading-none text-tf ' +
+                                        (droppable ? 'cursor-pointer hover:bg-bg2 hover:text-tx' : 'opacity-50')
+                                    }
                                 >
                                     +
                                 </button>
@@ -103,6 +111,7 @@ export const BoardView = component<BoardViewProps>(({ props }) => {
                                         issue={issue}
                                         config={config}
                                         onDragEnd={() => { drag.over = null; }}
+                                        onOpen={() => props.onOpen(issue.number)}
                                     />
                                 ))}
                             </div>

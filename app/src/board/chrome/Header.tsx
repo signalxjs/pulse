@@ -8,7 +8,9 @@ type HeaderProps =
     Define.Prop<'owner', string, true> &
     Define.Prop<'repo', string, true> &
     Define.Prop<'viewTitle', string, true> &
-    Define.Prop<'avatars', BoardPerson[]>;
+    Define.Prop<'avatars', BoardPerson[]> &
+    /** "+ New" click — opens the new-issue modal (pulse#54). */
+    Define.Prop<'onNewIssue', () => void>;
 
 /**
  * The main-pane header bar (handoff §Screens 2, ~54px): hamburger (narrow
@@ -73,6 +75,8 @@ export const Header = component<HeaderProps>(({ props }) => {
 
             <button
                 type="button"
+                data-new-issue-button
+                onClick={() => props.onNewIssue?.()}
                 class="flex shrink-0 cursor-pointer items-center gap-[7px] rounded-lg bg-ac px-3 py-[7px] text-[12.5px] leading-[1.25] font-semibold text-white hover:brightness-[1.08]"
             >
                 <span class="-mt-px text-[15px] leading-none">+</span> New
