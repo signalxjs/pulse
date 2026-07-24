@@ -52,6 +52,17 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
     const windowStart = roadmapWindowStart();
     const weeks = Array.from({ length: ROADMAP_SLOTS }, (_, k) =>
         monthDay(windowStart.getTime() + k * 14 * DAY));
+    // Group the working set by milestone ONCE (not per cycle) — the counts
+    // below are then O(1) lookups instead of O(cycles × issues) rescans.
+    const perCycle = new Map<number, { inCycle: number; done: number }>();
+    for (const i of props.issues) {
+        const n = i.milestone?.number;
+        if (n === undefined) continue;
+        const agg = perCycle.get(n) ?? { inCycle: 0, done: 0 };
+        agg.inCycle++;
+        if (statusOf(i, props.config) === 'done') agg.done++;
+        perCycle.set(n, agg);
+    }
     return (
         <div data-roadmap-view class="h-full overflow-auto px-[22px] py-5">
             <div class="grid min-w-[720px] grid-cols-[150px_1fr]">
@@ -68,14 +79,7 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                 // bar reflects what the board actually tracks (and follows
                 // the live filters); an issue-less cycle reads "planned"
                 // (prototype behavior).
-                // One pass: the cycle's issue count and its done count.
-                let inCycle = 0;
-                let done = 0;
-                for (const i of props.issues) {
-                    if (i.milestone?.number !== c.number) continue;
-                    inCycle++;
-                    if (statusOf(i, props.config) === 'done') done++;
-                }
+                const { inCycle, done } = perCycle.get(c.number) ?? { inCycle: 0, done: 0 };
                 const hue = STATE_HUE[c.state];
                 const slot = roadmapSlot(c, windowStart);
                 const frac = roadmapEndFraction(c, windowStart);
@@ -100,7 +104,7 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                         </div>
                         <div
                             class="relative h-full"
-                            style={`background:linear-gradient(90deg,var(--color-bd) 1px,transparent 1px);background-size:${(100 / ROADMAP_SLOTS).toFixed(3)}% 100%`}
+                            style={`background:linear-gradient(90deg,var(--color-bd) 1px,transparent 1px);background-size:calc(100% / ${ROADMAP_SLOTS}) 100%`}
                         >
                             {milestone
                                 ? frac !== null && (

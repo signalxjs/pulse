@@ -24,10 +24,12 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const APP_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 /**
- * Expected Roadmap/Sprint/Backlog numbers, derived from the fixture
- * dataset with the SAME rules as src/board/derive.ts (status labels →
- * columns, milestone → cycle, currentCycle pick) — computed, not
- * hard-coded, because the sprint/backlog assertions run AFTER the 5d drag
+ * Expected Roadmap/Sprint/Backlog numbers, computed from the fixture
+ * dataset by re-implementing derive.ts's rules (status labels → columns,
+ * milestone → cycle, currentCycle pick) against the KNOWN lumen conventions
+ * (`status: …` labels + `P0–P3`) that the smoke's setup saves — the numbers
+ * are computed, not hard-coded, because the sprint/backlog assertions run
+ * AFTER the 5d drag
  * (#513 Todo → In Progress persists in the fixtures overlay) and the
  * current-cycle pick depends on the real clock.
  */
