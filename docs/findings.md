@@ -268,7 +268,7 @@ around with an explicit `cell.refresh()` after the mutation. Board reads
 are `server: false` for now (SSR ships the static shell; the client
 fetches), which sidesteps the REPLACE path entirely.
 
-### F16 — `@sigx/resume` coexist mode: the documented client recipe kills full-tree hydration; the working recipe is server-plugin + loader only (R3 · to file on core)
+### F16 — `@sigx/resume` coexist mode: the documented client recipe kills full-tree hydration; the working recipe is server-plugin + loader only (R3 · core#483)
 Adopting `@sigx/resume@0.13.0` on Pulse's entry surface (pulse#57): resume on
 the Login PAT form, the drag-heavy board stays `ssrClientPlugin`-hydrated.
 The goal was **coexist** — one server, one client entry, resume boundaries
