@@ -7,9 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
-import { createLiveClient, GitHubApiError } from '@pulse/github';
+import { createLiveClient, createDbEtagCache, GitHubApiError } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
-import { createSqliteEtagCache } from '@pulse/github/node';
+import { createSqliteDb } from '@pulse/db/sqlite';
+import { applyMigrations } from '@pulse/db/migrate';
 
 function fetchStub(sequence: Array<{ status: number; body?: unknown; etag?: string; headers?: Record<string, string> }>) {
     let call = 0;
@@ -119,7 +120,9 @@ describe('createLiveClient — repoIssues paging', () => {
     });
 
     it('caches the {items, nextPage} envelope so a 304 reconstructs the full page', async () => {
-        const cache = createSqliteEtagCache();
+        const db = createSqliteDb();
+        await applyMigrations(db, join(process.cwd(), 'app', 'migrations'));
+        const cache = createDbEtagCache(db);
         const { stub, calls } = fetchStub([
             {
                 status: 200,
@@ -364,7 +367,7 @@ describe('WinterCG purity', () => {
         // import.meta.url is not a file: URL under the happy-dom environment;
         // vitest runs from the repo root.
         const src = join(process.cwd(), 'packages', 'github', 'src');
-        for (const file of ['index.js', 'live.js', 'fixtures.js', 'fixtures-data.js', 'paging.js']) {
+        for (const file of ['index.js', 'live.js', 'db-etag-cache.js', 'fixtures.js', 'fixtures-data.js', 'paging.js']) {
             const code = readFileSync(join(src, file), 'utf-8');
             expect(code, `${file} must stay runtime-agnostic`).not.toMatch(/from\s+['"]node:/);
         }

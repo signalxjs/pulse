@@ -7,8 +7,11 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
+import { join } from 'node:path';
 import type { Server } from 'node:http';
 import { createSessionStore, createAuthRouter } from '@pulse/auth';
+import { createSqliteDb } from '@pulse/db/sqlite';
+import { applyMigrations } from '@pulse/db/migrate';
 import { sign, STATE_COOKIE } from '../src/cookies.js';
 
 const USER = { login: 'octo', name: null, avatarUrl: 'https://a/u' };
@@ -19,7 +22,9 @@ let base: string;
 
 beforeAll(async () => {
     const app = express();
-    const sessions = createSessionStore({ secret: SECRET });
+    const db = createSqliteDb();
+    await applyMigrations(db, join(process.cwd(), 'app', 'migrations'));
+    const sessions = createSessionStore({ db, secret: SECRET });
     app.use('/auth', createAuthRouter({
         sessions,
         secret: SECRET,

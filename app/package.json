@@ -24,7 +24,8 @@
         "tailwindcss": "^4.2.4",
         "express": "^5.2.1",
         "@pulse/github": "workspace:*",
-        "@pulse/auth": "workspace:*"
+        "@pulse/auth": "workspace:*",
+        "@pulse/db": "workspace:*"
     },
     "devDependencies": {
         "@sigx/vite": "catalog:",

@@ -1,10 +1,11 @@
 /**
- * Session storage — node:sqlite, GitHub tokens encrypted at rest with
- * AES-256-GCM (key derived from PULSE_SECRET via scrypt). Session ids are
- * random UUIDs; the cookie layer (cookies.js) signs them so a forged sid
- * never reaches the table.
+ * Session storage — over the PulseDb seam (@pulse/db), GitHub tokens
+ * encrypted at rest with AES-256-GCM (key derived from PULSE_SECRET via
+ * scrypt). Session ids are random UUIDs; the cookie layer (cookies.js)
+ * signs them so a forged sid never reaches the table. The `sessions` table
+ * comes from the shared migrations (`app/migrations`) — apply them before
+ * constructing the store; there is no inline DDL here.
  */
-import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
 
 /** @param {string} secret */
@@ -46,49 +47,41 @@ function decrypt(key, payload) {
 const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * @param {{ dbPath?: string, secret: string, ttlMs?: number }} options
+ * @param {{ db: import('@pulse/db').PulseDb, secret: string, ttlMs?: number }} options
  * @returns {import('./index.js').SessionStore}
  */
 export function createSessionStore(options) {
     if (!options?.secret) {
         throw new Error('createSessionStore: a secret is required (set PULSE_SECRET)');
     }
+    if (!options.db) {
+        throw new Error('createSessionStore: a PulseDb is required (create one and apply the app migrations first)');
+    }
     const key = deriveKey(options.secret);
-    const db = new DatabaseSync(options.dbPath ?? ':memory:');
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS sessions (
-            sid TEXT PRIMARY KEY,
-            token_enc TEXT NOT NULL,
-            login TEXT NOT NULL,
-            name TEXT,
-            avatar_url TEXT NOT NULL,
-            created_at INTEGER NOT NULL
-        )
-    `);
+    const db = options.db;
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
-    const insert = db.prepare('INSERT INTO sessions (sid, token_enc, login, name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-    const select = db.prepare('SELECT * FROM sessions WHERE sid = ?');
-    const remove = db.prepare('DELETE FROM sessions WHERE sid = ?');
-    const sweep = db.prepare('DELETE FROM sessions WHERE created_at < ?');
 
     return {
-        create(user, token) {
+        async create(user, token) {
             // Sweep on write, not just on expired reads — sign-in-and-forget
             // rows must age out even if their sid never comes back.
-            sweep.run(Date.now() - ttlMs);
+            await db.run('DELETE FROM sessions WHERE created_at < ?', Date.now() - ttlMs);
             const sid = randomUUID();
-            insert.run(sid, encrypt(key, token), user.login, user.name, user.avatarUrl, Date.now());
+            await db.run(
+                'INSERT INTO sessions (sid, token_enc, login, name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                sid, encrypt(key, token), user.login, user.name, user.avatarUrl, Date.now()
+            );
             return sid;
         },
-        get(sid) {
-            const row = /** @type {any} */ (select.get(sid));
+        async get(sid) {
+            const row = /** @type {any} */ (await db.first('SELECT * FROM sessions WHERE sid = ?', sid));
             if (!row) return null;
             // Server-side TTL: a replayed signed cookie dies with the row —
             // the cookie's Max-Age alone is client-enforced only. Expiry
             // also sweeps other stale rows so the table can't grow without
             // bound under sign-in-and-forget usage.
             if (Date.now() - row.created_at > ttlMs) {
-                sweep.run(Date.now() - ttlMs);
+                await db.run('DELETE FROM sessions WHERE created_at < ?', Date.now() - ttlMs);
                 return null;
             }
             let token;
@@ -97,7 +90,7 @@ export function createSessionStore(options) {
             } catch {
                 // Corrupt row or rotated secret: an undecryptable session is
                 // an invalid session, never a 500. Drop the row.
-                remove.run(sid);
+                await db.run('DELETE FROM sessions WHERE sid = ?', sid);
                 return null;
             }
             return {
@@ -106,8 +99,8 @@ export function createSessionStore(options) {
                 token
             };
         },
-        destroy(sid) {
-            remove.run(sid);
+        async destroy(sid) {
+            await db.run('DELETE FROM sessions WHERE sid = ?', sid);
         }
     };
 }

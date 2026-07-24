@@ -4,8 +4,10 @@
  * requests carry If-None-Match, and 304s are served from the cache.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { createLiveClient, GitHubApiError } from '@pulse/github';
-import { createSqliteEtagCache } from '@pulse/github/node';
+import { join } from 'node:path';
+import { createLiveClient, createDbEtagCache, GitHubApiError } from '@pulse/github';
+import { createSqliteDb } from '@pulse/db/sqlite';
+import { applyMigrations } from '@pulse/db/migrate';
 
 const USER = { login: 'octo', name: 'Octo', avatar_url: 'https://a/u' };
 
@@ -27,7 +29,10 @@ function fetchStub(sequence: Array<{ status: number; body?: unknown; etag?: stri
 
 describe('createLiveClient — conditional requests', () => {
     it('stores the etag on 200 and serves 304s from the cache', async () => {
-        const cache = createSqliteEtagCache();
+        // The real cache setup: a PulseDb whose schema came from migrations.
+        const db = createSqliteDb();
+        await applyMigrations(db, join(process.cwd(), 'app', 'migrations'));
+        const cache = createDbEtagCache(db);
         const { stub, calls } = fetchStub([
             { status: 200, body: USER, etag: 'W/"abc"' },
             { status: 304 }

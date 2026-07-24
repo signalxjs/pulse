@@ -7,7 +7,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createLiveClient, GitHubApiError } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
-import { createSqliteEtagCache } from '@pulse/github/node';
+import { createDbEtagCache } from '@pulse/github';
+import { createSqliteDb } from '@pulse/db/sqlite';
+import { applyMigrations } from '@pulse/db/migrate';
+import { join } from 'node:path';
 
 function fetchStub(sequence: Array<{ status: number; body?: unknown; etag?: string; headers?: Record<string, string> }>) {
     let call = 0;
@@ -111,7 +114,9 @@ describe('createLiveClient — send() wire behavior', () => {
     });
 
     it('writes never touch the ETag cache: no If-None-Match, nothing stored', async () => {
-        const cache = createSqliteEtagCache();
+        const db = createSqliteDb();
+        await applyMigrations(db, join(process.cwd(), 'app', 'migrations'));
+        const cache = createDbEtagCache(db);
         const { stub, calls } = fetchStub([
             { status: 201, body: RAW_CREATED_ISSUE, etag: 'W/"write"' },
             { status: 201, body: RAW_CREATED_ISSUE, etag: 'W/"write"' }
@@ -123,7 +128,8 @@ describe('createLiveClient — send() wire behavior', () => {
         // Even though the first response carried an etag, the second write
         // must not send a validator — writes bypass the cache entirely.
         expect(calls[1]!.headers['if-none-match']).toBeUndefined();
-        expect(cache.get('https://api.github.com/repos/o/r/issues')).toBeUndefined();
+        // The EtagCache contract answers null OR undefined on a miss.
+        expect(await cache.get('https://api.github.com/repos/o/r/issues')).toBeFalsy();
     });
 
     it('folds 422 errors[] field details into the GitHubApiError message', async () => {

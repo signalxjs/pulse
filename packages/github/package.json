@@ -14,13 +14,12 @@
         "./fixtures": {
             "types": "./src/fixtures.d.ts",
             "default": "./src/fixtures.js"
-        },
-        "./node": {
-            "types": "./src/node.d.ts",
-            "default": "./src/etag-cache.js"
         }
     },
     "engines": {
         "node": ">=24"
+    },
+    "dependencies": {
+        "@pulse/db": "workspace:*"
     }
 }

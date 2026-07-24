@@ -6,13 +6,16 @@
 // fixtures when PULSE_FIXTURES=1 or no GITHUB_TOKEN, else a live client on
 // the env token (single-user dev convenience).
 import express from 'express';
-import { createLiveClient } from '@pulse/github';
+import { createLiveClient, createDbEtagCache } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
-import { createSqliteEtagCache } from '@pulse/github/node';
 
-export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
-    // Fixtures mode never talks to GitHub — no ETag cache to keep.
-    const etagCache = fixtures ? null : createSqliteEtagCache(dbPath);
+export function createGitHubApi({ db, getSession, fixtures } = {}) {
+    if (!fixtures && !db) {
+        throw new Error('createGitHubApi: a db is required in live mode (the ETag cache persists there)');
+    }
+    // Fixtures mode never talks to GitHub — no ETag cache to keep. The db
+    // arrives migrated (server.mjs applies app/migrations before serving).
+    const etagCache = fixtures ? null : createDbEtagCache(db);
     const fallback = fixtures
         ? createFixturesClient()
         : (process.env.GITHUB_TOKEN
@@ -25,8 +28,8 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
      * client — the route layer answers 401 instead of silently serving
      * fixtures data.
      */
-    const clientFor = (req) => {
-        const session = getSession?.(req);
+    const clientFor = async (req) => {
+        const session = await getSession?.(req);
         if (session) {
             // The mode gates the shortcut — in LIVE mode a literal
             // 'fixtures' token is just an (invalid) PAT, never a bypass.
@@ -42,7 +45,7 @@ export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     /** Wrap a handler: JSON result, GitHub errors mapped to real statuses. */
     const route = (fn) => async (req, res) => {
         try {
-            const client = clientFor(req);
+            const client = await clientFor(req);
             if (!client) {
                 res.status(401).json({ error: 'sign in required' });
                 return;

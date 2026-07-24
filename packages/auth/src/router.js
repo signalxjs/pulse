@@ -134,7 +134,7 @@ export function createAuthRouter(options) {
             // token stored here would make /api/github build a LIVE client.
             const storedToken = fixtures ? 'fixtures' : payload.access_token;
             const user = await makeClient(storedToken).viewer();
-            const sid = sessions.create(user, storedToken);
+            const sid = await sessions.create(user, storedToken);
             setSessionCookie(res, sid);
             res.redirect(303, returnTo);
         } catch (err) {
@@ -158,7 +158,7 @@ export function createAuthRouter(options) {
             // Live: the PAT proves itself by fetching the viewer.
             const client = makeClient(fixtures ? 'fixtures' : token);
             const user = await client.viewer();
-            const sid = sessions.create(user, fixtures ? 'fixtures' : token);
+            const sid = await sessions.create(user, fixtures ? 'fixtures' : token);
             setSessionCookie(res, sid);
             res.json({ ok: true, user });
         } catch (err) {
@@ -167,13 +167,13 @@ export function createAuthRouter(options) {
         }
     });
 
-    router.post('/logout', (req, res) => {
+    router.post('/logout', async (req, res) => {
         if (!sameOrigin(req)) {
             res.status(403).json({ error: 'cross-origin logout rejected' });
             return;
         }
         const sid = verify(readCookie(req, SESSION_COOKIE), secret);
-        if (sid) sessions.destroy(sid);
+        if (sid) await sessions.destroy(sid);
         res.append('set-cookie', cookieHeader(SESSION_COOKIE, '', { clear: true }));
         res.json({ ok: true });
     });
@@ -185,9 +185,9 @@ export function createAuthRouter(options) {
  * @param {{ headers: { cookie?: string } }} req
  * @param {import('./index.js').SessionStore} sessions
  * @param {string} secret
- * @returns {import('./index.js').Session | null}
+ * @returns {Promise<import('./index.js').Session | null>}
  */
-export function getSession(req, sessions, secret) {
+export async function getSession(req, sessions, secret) {
     if (!secret) throw new Error('getSession: a secret is required — an empty secret makes cookies forgeable');
     const sid = verify(readCookie(req, SESSION_COOKIE), secret);
     return sid ? sessions.get(sid) : null;

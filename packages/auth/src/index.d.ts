@@ -4,6 +4,7 @@
  */
 import type { Router, Request } from 'express';
 import type { GitHubClient, GitHubUser } from '@pulse/github';
+import type { PulseDb } from '@pulse/db';
 
 export interface SessionUser extends GitHubUser {}
 
@@ -15,13 +16,16 @@ export interface Session {
 }
 
 export interface SessionStore {
-    create(user: SessionUser, token: string): string;
-    get(sid: string): Session | null;
-    destroy(sid: string): void;
+    create(user: SessionUser, token: string): Promise<string>;
+    get(sid: string): Promise<Session | null>;
+    destroy(sid: string): Promise<void>;
 }
 
-/** node:sqlite-backed session store; tokens encrypted at rest (AES-256-GCM). */
-export function createSessionStore(options: { dbPath?: string; secret: string; ttlMs?: number }): SessionStore;
+/**
+ * Session store over any PulseDb; tokens encrypted at rest (AES-256-GCM).
+ * Requires the `sessions` table — apply the app migrations first.
+ */
+export function createSessionStore(options: { db: PulseDb; secret: string; ttlMs?: number }): SessionStore;
 
 export interface AuthRouterOptions {
     sessions: SessionStore;
@@ -43,4 +47,4 @@ export interface AuthRouterOptions {
 export function createAuthRouter(options: AuthRouterOptions): Router;
 
 /** Resolve the request's session from the signed cookie, or null. */
-export function getSession(req: Request | { headers: { cookie?: string } }, sessions: SessionStore, secret: string): Session | null;
+export function getSession(req: Request | { headers: { cookie?: string } }, sessions: SessionStore, secret: string): Promise<Session | null>;
