@@ -11,7 +11,7 @@ import type { BoardConfig, BoardStatusId } from '@pulse/db';
 import { detectBoard } from '../src/board/detect';
 import {
     statusOf, priorityOf, moveLabels, cyclesFrom, currentCycle, sprintStats,
-    roadmapWindowStart, roadmapSlot, labelsFor, peopleFor,
+    roadmapWindowStart, roadmapSlot, isMilestoneCycle, roadmapEndFraction, labelsFor, peopleFor,
     cardLabels, filterIssues, sortByPriority
 } from '../src/board/derive';
 
@@ -219,6 +219,28 @@ describe('roadmap window & slots', () => {
         expect(roadmapSlot(past!, windowStart)).toBeNull();
         const [future] = cyclesFrom([mk('2026-12-01T00:00:00Z')], NOW); // beyond slot 5
         expect(roadmapSlot(future!, windowStart)).toBeNull();
+    });
+});
+
+describe('milestone markers (roadmap)', () => {
+    const windowStart = roadmapWindowStart(NOW);
+    const cycles = cyclesFrom(milestones, NOW);
+
+    it('classifies only the issue-less v3.0 milestone as milestone-style', () => {
+        expect(cycles.map((c) => isMilestoneCycle(c))).toEqual([false, false, false, false, true]);
+    });
+
+    it('positions the marker at the due-date fraction of the 12-week window', () => {
+        const v3 = cycles[4]!; // due Aug 15 07:00Z; window starts Jun 15 → 61d7h of 84d
+        expect(roadmapEndFraction(v3, windowStart)).toBeCloseTo((61 * 24 + 7) / (84 * 24), 5);
+    });
+
+    it('answers null when the due date lies outside the window', () => {
+        const v3 = cycles[4]!;
+        // Window far in the future (due date before it) and far in the past
+        // (due date beyond it) — both out of range.
+        expect(roadmapEndFraction(v3, roadmapWindowStart(new Date('2026-11-02T00:00:00Z')))).toBeNull();
+        expect(roadmapEndFraction(v3, roadmapWindowStart(new Date('2026-03-02T00:00:00Z')))).toBeNull();
     });
 });
 
