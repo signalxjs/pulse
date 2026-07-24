@@ -31,7 +31,10 @@ function isSafeSegment(segment) {
  * @returns {any}
  */
 function load(rel) {
-    return Object.hasOwn(FIXTURES, rel) ? FIXTURES[rel] : null;
+    // FIXTURES is a module-level singleton (the generated static-import
+    // map) — clone at the boundary so no caller can mutate shared state
+    // across reads, matching the fresh-parse behavior of the old fs path.
+    return Object.hasOwn(FIXTURES, rel) ? structuredClone(FIXTURES[rel]) : null;
 }
 
 /**

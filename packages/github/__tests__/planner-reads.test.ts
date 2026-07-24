@@ -304,6 +304,15 @@ describe('fixtures adapter — planner dataset', () => {
         expect(await gh.issueTimeline('lumen', 'lumen', 511)).toEqual([]);
     });
 
+    it('returns fresh objects per read — mutating a result never leaks into later reads', async () => {
+        const labels = await gh.repoLabels('lumen', 'lumen');
+        labels.pop();
+        labels[0]!.name = 'mutated';
+        const again = await gh.repoLabels('lumen', 'lumen');
+        expect(again.length).toBe(labels.length + 1);
+        expect(again[0]!.name).not.toBe('mutated');
+    });
+
     it('keeps the signalxjs/pulse recordings working alongside the demo', async () => {
         const page = await gh.repoIssues('signalxjs', 'pulse');
         expect(page.items.length).toBeGreaterThanOrEqual(3);
