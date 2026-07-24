@@ -269,10 +269,11 @@ are `server: false` for now (SSR ships the static shell; the client
 fetches), which sidesteps the REPLACE path entirely.
 
 ### F16 — `@sigx/resume` coexist mode: the documented client recipe kills full-tree hydration; the working recipe is server-plugin + loader only (R3 · core#483)
-Adopting `@sigx/resume@0.13.0` on Pulse's entry surface (pulse#57): resume on
-the Login PAT form, the drag-heavy board stays `ssrClientPlugin`-hydrated.
-The goal was **coexist** — one server, one client entry, resume boundaries
-living inside a fully hydrated shell (sign-out button, router `<Link>`s).
+Adopting `@sigx/resume@0.13.0` on Pulse's entry surfaces (pulse#57): resume
+boundaries on **both** the Login PAT form *and* the Dashboard repo filter,
+while the drag-heavy board stays `ssrClientPlugin`-hydrated. The goal was
+**coexist** — one server, one client entry, resume boundaries living inside a
+fully hydrated shell (sign-out button, router `<Link>`s).
 
 **The trap.** The plugin's docstring frames the client call as
 `app.use(resumePlugin())` — "coexist mode: declares explicit-boundaries
@@ -316,6 +317,23 @@ production build: native form POST → 303 PRG + `Set-Cookie` (JS off);
 RPC → 200 JSON envelope + `Set-Cookie` (JS on); returnTo sanitized
 server-side (`https://evil` → `/`). One `serverFn({ form: true, input })` +
 one `signInWithPat` primitive shared with `/auth/pat`.
+
+**Second surface — the Dashboard repo filter (upgrade-on-write, no server
+fn).** `RepoFilter.resume.tsx` is a resume boundary that renders only the
+filter `<input>` + a live "N of M" count; its `input` handler was fully
+extracted (`e.signals.query`/`e.signals.shown` + `document`, no module-scope
+capture) and stamped `data-sigx-on:input`. First keystroke wakes it: the QRL
+runs, the write loads the component chunk, and the count re-renders live —
+verified `17 → 3` on typing `core`, restored on clear (node + workerd). A
+design constraint worth recording: a `hydrate: 'never'` boundary can't OWN
+the repo grid, because the cards are `@sigx/router` `<Link>`s that must stay
+hydrated for client-side board nav (a boundary-owned grid would leave them
+dead until interaction). So the boundary is the *input*, and it filters the
+still-hydrated grid by toggling each card's `hidden` from a `data-repo-search`
+haystack — progressive enhancement that ships zero JS on load and shows every
+repo until JS wakes. Resume boundaries compose fine nested inside a hydrated
+component's `match()` arm (both surfaces do this — Login's conditional, the
+Dashboard's `repos.match(...ready)`).
 
 **JS-shipped delta (Login route, gzip, eager script + modulepreloads).**
 Baseline (main, no resume) `42.5 KB` (entry 12.3 + sigx 30.2). Coexist branch

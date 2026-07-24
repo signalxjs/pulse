@@ -251,6 +251,44 @@ try {
     assert(await page.locator('[data-app-header]').textContent().then((t) => t.includes('pulse-dev')),
         'app header shows the signed-in user');
 
+    // 3b) The Dashboard repo filter is a resume boundary (pulse#57): the grid
+    // renders + hydrates normally (SSR ships every card), and the filter
+    // input ships ZERO JS until the first keystroke, which wakes it and
+    // narrows the grid by each card's data-repo-search. Proves resume on the
+    // second entry surface (Login is the first).
+    assert((await page.getAttribute('[data-repo-filter]', 'data-sigx-on:input')) !== null,
+        'the repo filter is a resume boundary (carries the delegation input QRL)');
+    const totalCards = await page.locator('[data-repo-card]').count();
+    assert(totalCards >= 10, `the grid server-renders every repo card (${totalCards})`);
+    await page.fill('[data-repo-filter]', 'core');
+    // The boundary wakes async (loads its QRL + runtime, then the handler
+    // toggles hidden) — poll until the grid has narrowed.
+    await page.waitForFunction(
+        (total) => {
+            const vis = [...document.querySelectorAll('[data-repo-card]')].filter((el) => !el.hidden).length;
+            return vis > 0 && vis < total;
+        },
+        totalCards,
+        { timeout: 10000 }
+    );
+    const visible = await page.locator('[data-repo-card]:not([hidden])').count();
+    assert(visible > 0 && visible < totalCards,
+        `typing wakes the resume filter and narrows the grid (${visible} of ${totalCards})`);
+    // The live "N of M" count is the upgrade-on-write proof: it only updates
+    // once the boundary's component chunk loads on the signal write.
+    const countText = (await page.locator('[data-repo-filter-count]').textContent()).trim();
+    assert(countText === `${visible} of ${totalCards}`,
+        `the filter's live count upgraded on write (${countText})`);
+    // Clearing restores the full grid (so later card-click assertions see
+    // every card).
+    await page.fill('[data-repo-filter]', '');
+    await page.waitForFunction(
+        (total) => [...document.querySelectorAll('[data-repo-card]')].filter((el) => !el.hidden).length === total,
+        totalCards,
+        { timeout: 10000 }
+    );
+    assert(true, 'clearing the filter restores every repo');
+
     // 4) SSR-first-paint: a fresh signed-in document CONTAINS the data — no
     // client fetch needed for first render (useData SSR transfer).
     const cookies = await page.context().cookies();
