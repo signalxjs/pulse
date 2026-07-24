@@ -8,7 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 /**
  * @param {string} [dbPath] Defaults to in-memory (dev/tests); pass a file
  *   path in production so data survives restarts.
- * @returns {import('./index.js').PulseDb}
+ * @returns {import('./index.js').PulseDb & { close(): void }}
  */
 export function createSqliteDb(dbPath = ':memory:') {
     const db = new DatabaseSync(dbPath);

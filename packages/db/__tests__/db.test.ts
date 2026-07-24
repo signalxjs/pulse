@@ -36,6 +36,7 @@ function tempDir(): string {
 /** A minimal D1Database stub backed by the sqlite driver. */
 function d1Stub(): D1DatabaseLike {
     const inner = createSqliteDb();
+    openDbs.push(inner);
     type BoundStmt = D1PreparedStatementLike & { sql: string; params: SqlParam[] };
     function make(sql: string, params: SqlParam[]): BoundStmt {
         return {
