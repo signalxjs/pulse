@@ -22,14 +22,14 @@ pnpm exec wrangler d1 create pulse
 
 The command prints the new database's UUID. Paste it into
 [`app/wrangler.jsonc`](../app/wrangler.jsonc) as
-`d1_databases[0].database_id` (it ships with a placeholder until
-provisioning), and commit that change — the deploy workflow reads the id
-from the checked-in config.
+`d1_databases[0].database_id` and commit that change — the deploy workflow
+reads the id from the checked-in config. (The current checked-in id is the
+already-provisioned production database; repeat this step only when
+provisioning a fresh environment.)
 
 Local flows (`wrangler dev --local`, `d1 migrations apply --local`,
 `pnpm smoke:cf`) never read `database_id`; they key local state off the
-binding/name, so the placeholder was never a problem locally and the real id
-is inert for them too.
+binding/name, so whatever id is committed stays inert for them.
 
 ## 2. Apply migrations to the remote database
 

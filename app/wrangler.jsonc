@@ -25,10 +25,10 @@
         {
             "binding": "DB",
             "database_name": "pulse",
-            // Placeholder until the deploy PR provisions the real database
-            // (`wrangler d1 create pulse`). Local flows never read it:
-            // `wrangler dev --local` and `d1 migrations apply --local` key
-            // local state off the binding/name — verified by pnpm smoke:cf.
+            // The provisioned production database (docs/deploy.md §1).
+            // Local flows never read it: `wrangler dev --local` and
+            // `d1 migrations apply --local` key local state off the
+            // binding/name — verified by pnpm smoke:cf.
             "database_id": "3768a0ee-3c72-4e4b-b43a-742acad07db3",
             "migrations_dir": "migrations"
         }
