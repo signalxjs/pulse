@@ -1,19 +1,20 @@
 import { component, useData, useHead } from 'sigx';
-import { usePulseApi } from '../api';
+import { viewerOrgs, viewerRepos } from '../server/repos.server';
 import { useSessionStore } from '../stores/session';
 
 /**
- * The org/repo picker — the signed-in landing page. Data flows through the
- * PulseApi seam: SSR renders with the per-request GitHub client (streamed),
- * the client joins the same cells from the __SIGX_ASYNC__ transfer and only
- * refetches on later navigations.
+ * The org/repo picker — the signed-in landing page. Data flows through
+ * server functions (rfc-server): `useData(fn)` keys the cell on the fn's
+ * build-stamped stable id. SSR calls the fn in-process with the ambient
+ * request (streamed), the client joins the same cells from the
+ * __SIGX_ASYNC__ transfer and only refetches — through the typed fetch
+ * stubs — on later navigations.
  */
 export const Dashboard = component(() => {
     useHead({ title: 'Pulse — your repos' });
-    const api = usePulseApi();
     const session = useSessionStore();
-    const orgs = useData('viewer-orgs', () => api.viewerOrgs());
-    const repos = useData('viewer-repos', () => api.viewerRepos());
+    const orgs = useData(viewerOrgs);
+    const repos = useData(viewerRepos);
 
     return () => (
         <div class="mx-auto max-w-5xl space-y-6">

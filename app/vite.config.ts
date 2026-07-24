@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import sigx from '@sigx/vite';
+import { sigxServer } from '@sigx/vite/server';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -35,7 +36,10 @@ const devAliases = {
 };
 
 export default defineConfig(({ command }) => ({
-    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), tailwindcss()],
+    // sigxServer(): *.server.ts modules become fetch stubs in the client
+    // build, the SSR build emits the fn registry (dist/server/
+    // sigx-server-fns.js), and dev gets the /_sigx/fn endpoint middleware.
+    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), sigxServer(), tailwindcss()],
     oxc: {
         jsx: {
             runtime: 'automatic',

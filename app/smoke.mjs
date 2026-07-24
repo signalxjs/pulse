@@ -60,8 +60,20 @@ try {
     assert(signedOut.headers.get('location') === '/login?returnTo=%2F', 'redirect target carries returnTo');
     const missing = await fetch(`${BASE}/definitely-not-a-page`, { headers: { 'user-agent': UA } });
     assert(missing.status === 404, 'unknown routes answer a REAL 404');
-    const apiNoAuth = await fetch(`${BASE}/api/github/viewer`);
-    assert(apiNoAuth.ok, 'fixtures mode serves the API tokenless');
+    // The /api/github proxy is RETIRED (pulse#34) — data rides server
+    // functions. Unauthenticated calls answer the withAuth guard's 401
+    // (probed via the deploy-durable STABLE symbol, never the content hash).
+    const proxyGone = await fetch(`${BASE}/api/github/viewer`, { headers: { 'user-agent': UA } });
+    assert(proxyGone.status === 404, 'the retired /api/github proxy no longer answers');
+    const fnNoAuth = await fetch(
+        `${BASE}/_sigx/fn/${encodeURIComponent('pulse-app/src/server/repos.server.ts#viewerRepos')}`,
+        {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', origin: BASE },
+            body: JSON.stringify({ args: [] })
+        }
+    );
+    assert(fnNoAuth.status === 401, 'an unauthenticated server-fn call answers the guard\'s 401');
 
     // ---- Browser flow ----
     browser = await chromium.launch();
@@ -113,12 +125,19 @@ try {
     // ZERO document requests.
     await page.goto(`${BASE}/login`, { waitUntil: 'load' });
     let docRequests = 0;
-    page.on('request', (r) => { if (r.resourceType() === 'document') docRequests++; });
+    let fnRequests = 0;
+    page.on('request', (r) => {
+        if (r.resourceType() === 'document') docRequests++;
+        if (r.url().includes('/_sigx/fn/')) fnRequests++;
+    });
     await page.waitForSelector('text=go to the dashboard', { timeout: 10000 });
     await page.click('text=go to the dashboard');
     await page.waitForURL(`${BASE}/`, { timeout: 10000 });
     await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });
     assert(docRequests === 0, 'Link navigation to the dashboard stays client-side (URL changed, 0 document requests)');
+    // The dashboard's data on a CLIENT-SIDE nav comes through the server-fn
+    // stubs — the typed fetch swap the client build performs (pulse#34).
+    assert(fnRequests >= 1, `client-side nav fetches data through the server-fn stubs (${fnRequests} calls)`);
 
     // 6) Sign out round-trip.
     await page.waitForSelector('text=Sign out', { timeout: 10000 });
