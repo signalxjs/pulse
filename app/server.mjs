@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createSessionStore, createAuthHandler, getSession } from '@pulse/auth';
+import { createConfigStore } from '@pulse/db';
 import { createSqliteDb } from '@pulse/db/sqlite';
 import { applyMigrations } from '@pulse/db/migrate';
 import { createLiveClient, createDbEtagCache } from '@pulse/github';
@@ -67,7 +68,7 @@ async function createServer() {
     // The service registry server functions reach for at request time
     // (src/server/services.server.ts is the typed accessor). Set BEFORE any
     // request is served — the `use:` chain (withAuth) reads it per call.
-    globalThis.__PULSE_SERVER__ = { sessions, etagCache, makeGitHubClient, fixtures, secret };
+    globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret };
 
     // The auth surface is a WinterCG fetch handler (Workers-ready); the
     // bridge adapts it to Express for local serving.

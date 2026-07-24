@@ -63,6 +63,51 @@ export const PRIORITIES: readonly PriorityMeta[] = [
 ];
 
 /**
+ * Deterministic avatar/person hue from a GitHub login — real GitHub
+ * accounts have no design hue, so one is derived stably from the login
+ * (same login, same color, every render and every session).
+ */
+export function personHue(login: string): number {
+    let h = 0;
+    for (let i = 0; i < login.length; i++) {
+        h = (h * 31 + login.charCodeAt(i)) % 360;
+    }
+    return h;
+}
+
+/**
+ * sRGB hex (no leading '#', GitHub label form) of an OKLCh color — the
+ * inverse of {@link hexToOklchHue}'s pipeline (OKLab reference matrices),
+ * for creating REAL GitHub labels in the design system's hues (the label
+ * dot formula `oklch(0.62 0.14 <hue>)` → `createLabel` hex). Out-of-gamut
+ * channels are clamped — a crude clip, fine at the label chroma.
+ */
+export function oklchToHex(l: number, c: number, hue: number): string {
+    const hr = (hue * Math.PI) / 180;
+    const a = c * Math.cos(hr);
+    const b = c * Math.sin(hr);
+
+    // OKLab → LMS′ → LMS (cube), then LMS → linear sRGB.
+    const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+    const L = l_ ** 3;
+    const M = m_ ** 3;
+    const S = s_ ** 3;
+    const r = 4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S;
+    const g = -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S;
+    const bl = -0.0041960863 * L - 0.7034186147 * M + 1.7076147010 * S;
+
+    // Linear light → sRGB transfer, clamped into gamut, two hex digits.
+    const enc = (x: number) => {
+        const clamped = Math.min(1, Math.max(0, x));
+        const srgb = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+        return Math.round(srgb * 255).toString(16).padStart(2, '0');
+    };
+    return enc(r) + enc(g) + enc(bl);
+}
+
+/**
  * OKLCh hue (degrees, [0, 360)) of a sRGB hex color — for deriving the
  * handoff's hue-keyed tints from real GitHub label colors (`#d73a4a` → a
  * hue that feeds labelStyle()). Proper pipeline: hex → linear sRGB → OKLab

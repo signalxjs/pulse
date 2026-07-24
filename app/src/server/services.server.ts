@@ -10,13 +10,14 @@
  * seams. A worker entry (M-later) sets the same global from its env.
  */
 import type { SessionStore } from '@pulse/auth';
+import type { ConfigStore } from '@pulse/db';
 import type { EtagCache, GitHubClient } from '@pulse/github';
 
 export interface PulseServerServices {
     /** Session store over the app db (signed-cookie sessions). */
     sessions: SessionStore;
-    /** Reserved: per-user config store (arrives with a later milestone). */
-    configStore?: unknown;
+    /** Per-repo board configuration over the app db (board_config table). */
+    configStore: ConfigStore;
     /** Shared conditional-request cache; null in fixtures mode. */
     etagCache: EtagCache | null;
     /**

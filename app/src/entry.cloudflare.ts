@@ -22,6 +22,7 @@ import { template, assets, manifest } from 'virtual:sigx-app';
 import { collectAssets } from './collect-assets';
 import { serverFns } from 'virtual:sigx-server-fns';
 import { createSessionStore, createAuthHandler, getSession } from '@pulse/auth';
+import { createConfigStore } from '@pulse/db';
 import { createD1Db, type D1DatabaseLike } from '@pulse/db/d1';
 import { createLiveClient, createDbEtagCache } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
@@ -90,7 +91,7 @@ function init(env: Env): Handlers {
     // The service registry server functions reach for at request time —
     // the SAME shape server.mjs publishes (src/server/services.server.ts is
     // the typed accessor); the `use:` chain (withAuth) reads it per call.
-    globalThis.__PULSE_SERVER__ = { sessions, etagCache, makeGitHubClient, fixtures, secret };
+    globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret };
 
     const auth = createAuthHandler({
         sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies
