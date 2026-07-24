@@ -7,19 +7,28 @@ import { Sidebar } from './chrome/Sidebar';
 import { Header } from './chrome/Header';
 import { FilterBar } from './chrome/FilterBar';
 import { useBoardUiStore, DEFAULT_ACCENT_HUE } from '../stores/boardUi';
-import { boardIssues, boardLabels, boardPeople, getBoard } from '../server/board.server';
+import { boardIssues, boardLabels, boardMilestones, boardPeople, getBoard } from '../server/board.server';
 import { moveIssue } from '../server/mutations.server';
-import { filterIssues, labelsFor, moveLabels, peopleFor, statusOf } from './derive';
+import { cyclesFrom, filterIssues, labelsFor, moveLabels, peopleFor, statusOf } from './derive';
 import { boardKeys } from './keys';
 import { SetupPage } from './SetupPage';
 import { BoardView } from './BoardView';
 import { ListView } from './ListView';
+import { RoadmapView } from './RoadmapView';
+import { SprintView } from './SprintView';
+import { BacklogView } from './BacklogView';
 import { Toasts } from './components/Toast';
 import { IssueDetail } from './overlays/IssueDetail';
 import { CommandPalette } from './overlays/CommandPalette';
 import { NewIssue } from './overlays/NewIssue';
 import { isTypingTarget, shortcutAction } from './shortcuts';
-import { VIEWS, isViewKey } from './views';
+import { VIEWS, isViewKey, type ViewKey } from './views';
+
+/** Compile-time exhaustiveness for the view switch: if a new ViewKey is
+ *  added without a branch, `never` fails to accept it and tsc errors. */
+function exhaustiveView(key: never): never {
+    throw new Error(`BoardPage: unhandled view "${key as ViewKey}"`);
+}
 
 /**
  * The planner shell (pulse#39 chrome; pulse#40 config guard + live data):
@@ -81,6 +90,14 @@ const BoardPage = component(() => {
     const people = useData(
         () => configured() && boardKeys.people(params().owner, params().repo),
         (key) => boardPeople({ owner: key[1], repo: key[2] }),
+        { server: false }
+    );
+    // Milestones feed the Roadmap/Sprint cycles — only fetched when the
+    // config actually uses them as the cycle source.
+    const milestones = useData(
+        () => cfg.value?.config?.cycleSource === 'milestones'
+            && boardKeys.milestones(params().owner, params().repo),
+        (key) => boardMilestones({ owner: key[1], repo: key[2] }),
         { server: false }
     );
 
@@ -339,9 +356,9 @@ const BoardPage = component(() => {
                                         </div>
                                     );
                                 }
-                                // Both primary views render the SAME
-                                // filtered working set (shared helper —
-                                // they can never drift).
+                                // Every view renders the SAME filtered
+                                // working set (shared helper — they can
+                                // never drift).
                                 const working = filterIssues(issueList, {
                                     query: ui.query,
                                     filterLabel: ui.filterLabel
@@ -362,11 +379,42 @@ const BoardPage = component(() => {
                                 if (view!.key === 'list') {
                                     return <ListView issues={working} config={config} loading={loading} onOpen={openDetail} />;
                                 }
-                                return (
-                                    <div class="flex h-full items-center justify-center">
-                                        <span class="text-[12.5px] text-tf">The {view!.title} view lands in an upcoming PR.</span>
-                                    </div>
-                                );
+                                if (view!.key === 'backlog') {
+                                    return <BacklogView issues={working} config={config} loading={loading} onOpen={openDetail} />;
+                                }
+                                // Roadmap/Sprint ride the milestone-backed
+                                // cycles; with cycleSource 'none' they get
+                                // an empty list and render their own
+                                // empty states.
+                                const cycles = config.cycleSource === 'milestones'
+                                    ? cyclesFrom(milestones.value ?? [])
+                                    : [];
+                                const cyclesLoading = loading
+                                    || (config.cycleSource === 'milestones' && milestones.state !== 'ready');
+                                if (view!.key === 'roadmap') {
+                                    return (
+                                        <RoadmapView
+                                            issues={working}
+                                            config={config}
+                                            cycles={cycles}
+                                            loading={cyclesLoading}
+                                        />
+                                    );
+                                }
+                                if (view!.key === 'sprint') {
+                                    return (
+                                        <SprintView
+                                            issues={working}
+                                            config={config}
+                                            cycles={cycles}
+                                            loading={cyclesLoading}
+                                        />
+                                    );
+                                }
+                                // Every ViewKey is handled above; a new key
+                                // reaching here is a wiring bug, not a
+                                // silent Sprint fallback.
+                                return exhaustiveView(view!.key);
                             }
                         })}
                     </div>

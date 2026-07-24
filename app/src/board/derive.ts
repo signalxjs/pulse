@@ -295,6 +295,27 @@ export function roadmapSlot(cycle: BoardCycle, windowStart: Date): number | null
 }
 
 /**
+ * A milestone-style cycle (handoff §6: the v3.0 marker): the milestone
+ * itself reports zero issues, so it is a due-date marker, not a two-week
+ * work window — the roadmap renders it as the narrow red marker instead
+ * of a cycle bar.
+ */
+export function isMilestoneCycle(cycle: BoardCycle): boolean {
+    return cycle.total === 0;
+}
+
+/**
+ * The continuous position of a cycle's END (its due date) inside the
+ * roadmap window, as a 0–1 fraction of the 12-week span — where the
+ * milestone marker sits (a point date deserves a real position, not a
+ * 2-week slot). Null when the due date lies outside the window.
+ */
+export function roadmapEndFraction(cycle: BoardCycle, windowStart: Date): number | null {
+    const f = (Date.parse(cycle.end) - windowStart.getTime()) / (ROADMAP_SLOTS * CYCLE_MS);
+    return f >= 0 && f <= 1 ? f : null;
+}
+
+/**
  * The sidebar/filter-bar label list: repo labels minus the ones the config
  * maps to statuses/priorities (those are columns and P-flags, not tags),
  * with the design hue derived from each label's real hex (greys fall back

@@ -12,7 +12,7 @@
 // Real-Chrome UA throughout: HeadlessChrome matches the isBot regex and
 // would get the blocking document instead of the streaming human path.
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -22,6 +22,97 @@ const PORT = Number(process.env.PORT) || (CF ? 4181 : 4180);
 const BASE = `http://localhost:${PORT}`;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
 const APP_DIR = fileURLToPath(new URL('.', import.meta.url));
+
+/**
+ * Expected Roadmap/Sprint/Backlog numbers, computed from the fixture
+ * dataset by re-implementing derive.ts's rules (status labels → columns,
+ * milestone → cycle, currentCycle pick) against the KNOWN lumen conventions
+ * (`status: …` labels + `P0–P3`) that the smoke's setup saves — the numbers
+ * are computed, not hard-coded, because the sprint/backlog assertions run
+ * AFTER the 5d drag
+ * (#513 Todo → In Progress persists in the fixtures overlay) and the
+ * current-cycle pick depends on the real clock.
+ */
+function expectedViewNumbers() {
+    const fx = (rel) => JSON.parse(readFileSync(new URL(`../packages/github/fixtures/${rel}`, import.meta.url), 'utf-8'));
+    const DAY = 86_400_000;
+    const statusLabels = {
+        'status: backlog': 'backlog', 'status: todo': 'todo',
+        'status: in progress': 'inprogress', 'status: in review': 'inreview', 'status: done': 'done'
+    };
+    // The 5d drag moved #513 into In Progress — apply it to the disk data.
+    const dragged = { 513: 'inprogress' };
+    const statusOf = (i) => {
+        // Mirror derive.statusOf's precedence: closed → done wins over any
+        // label (and over a drag override) so the expectations stay aligned
+        // if a fixture ever has a closed, dragged, or mislabeled issue.
+        if (i.state === 'closed') return 'done';
+        if (dragged[i.number]) return dragged[i.number];
+        for (const l of i.labels) {
+            const s = statusLabels[l.name.toLowerCase()];
+            if (s) return s;
+        }
+        return i.isPr ? 'inreview' : 'todo';
+    };
+    const prioOf = (i) => {
+        for (const l of i.labels) {
+            const m = /^p([0-3])$/i.exec(l.name);
+            if (m) return Number(m[1]);
+        }
+        return 4;
+    };
+    const issues = fx('issues/lumen/lumen.json');
+    const now = Date.now();
+    const cycles = fx('milestones/lumen/lumen.json')
+        .filter((m) => m.dueOn !== null)
+        .sort((a, b) => Date.parse(a.dueOn) - Date.parse(b.dueOn))
+        .map((m) => ({
+            number: m.number,
+            end: Date.parse(m.dueOn),
+            start: Date.parse(m.dueOn) - 14 * DAY,
+            state: m.state === 'closed' ? 'done' : Date.parse(m.dueOn) - 14 * DAY <= now ? 'active' : 'planned',
+            total: m.openIssues + m.closedIssues
+        }));
+    // Per-cycle roadmap bar/marker expectations over the rolling window.
+    const windowStart = new Date(now);
+    windowStart.setUTCHours(0, 0, 0, 0);
+    windowStart.setUTCDate(windowStart.getUTCDate() - ((windowStart.getUTCDay() + 6) % 7) - 35);
+    const roadmap = cycles.map((c) => {
+        const inCycle = issues.filter((i) => i.milestone?.number === c.number);
+        const done = inCycle.filter((i) => statusOf(i) === 'done').length;
+        const slot = Math.floor((c.start - windowStart.getTime()) / (14 * DAY));
+        const frac = (c.end - windowStart.getTime()) / (12 * 7 * DAY);
+        return {
+            number: c.number,
+            marker: c.total === 0,
+            inWindow: c.total === 0
+                ? frac >= 0 && frac <= 1
+                : (slot >= 0 && slot < 6) || (slot < 0 && c.end > windowStart.getTime()),
+            label: inCycle.length > 0 ? `${done}/${inCycle.length}` : 'planned'
+        };
+    });
+    // The sprint's cycle: active-and-inside-window, else overdue active,
+    // else next planned (derive.currentCycle).
+    const cur = cycles.find((c) => c.state === 'active' && now <= c.end)
+        ?? cycles.find((c) => c.state === 'active')
+        ?? cycles.find((c) => c.state === 'planned');
+    const scoped = issues.filter((i) => i.milestone?.number === cur.number);
+    const by = (s) => scoped.filter((i) => s.includes(statusOf(i)));
+    const sprint = {
+        scope: scoped.length,
+        inFlight: by(['inprogress', 'inreview']).length,
+        completed: by(['done']).length,
+        notStarted: by(['backlog', 'todo']).length,
+        pct: scoped.length === 0 ? 0 : Math.round((by(['done']).length / scoped.length) * 100),
+        firstFocus: by(['inprogress', 'inreview'])
+            .sort((a, b) => (prioOf(a) - prioOf(b)) || (b.number - a.number))[0]?.number,
+        upNext: by(['todo']).length
+    };
+    const unstarted = issues
+        .filter((i) => ['backlog', 'todo'].includes(statusOf(i)))
+        .sort((a, b) => (prioOf(a) - prioOf(b)) || (b.number - a.number));
+    return { roadmap, cycleCount: cycles.length, sprint, backlog: { count: unstarted.length, first: unstarted[0]?.number } };
+}
 
 function assert(cond, message) {
     if (!cond) {
@@ -296,6 +387,73 @@ try {
     assert(await page.locator('[data-card]').count() === 1, 'the query carries into the board view (one card)');
     await page.fill('[data-board-header] input', '');
     await page.waitForFunction(() => document.querySelectorAll('[data-card]').length > 1, { timeout: 10000 });
+
+    // 5g) Roadmap view (pulse#53): one row per cycle over the rolling
+    // 12-week window; bar labels count the working set (post-drag), the
+    // issue-less v3.0 milestone renders as the narrow marker. Expected
+    // numbers are DERIVED from the fixture json (see expectedViewNumbers).
+    const expected = expectedViewNumbers();
+    await page.goto(`${BASE}/b/lumen/lumen/roadmap`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-roadmap-view]', { timeout: 10000 });
+    await page.waitForSelector('[data-roadmap-row]', { timeout: 10000 });
+    assert(await page.locator('[data-roadmap-row]').count() === expected.cycleCount,
+        `roadmap renders one row per lumen cycle (${expected.cycleCount})`);
+    for (const c of expected.roadmap) {
+        if (c.marker) {
+            assert(await page.locator(`[data-roadmap-marker="${c.number}"]`).count() === (c.inWindow ? 1 : 0),
+                `milestone ${c.number} renders as the narrow marker, never a bar${c.inWindow ? '' : ' (outside the window)'}`);
+            assert(await page.locator(`[data-roadmap-bar="${c.number}"]`).count() === 0,
+                `milestone ${c.number} renders no cycle bar`);
+        } else if (c.inWindow) {
+            const label = (await page.locator(`[data-roadmap-bar="${c.number}"]`).textContent()).trim();
+            assert(label === c.label, `cycle ${c.number} bar reads its working-set label (${c.label}, got "${label}")`);
+        } else {
+            assert(await page.locator(`[data-roadmap-bar="${c.number}"]`).count() === 0,
+                `cycle ${c.number} lies outside the window — no bar`);
+        }
+    }
+
+    // 5h) Sprint view: current-cycle stats from the fixtures (post-drag:
+    // #513 counts as in flight), lanes priority-sorted.
+    await page.goto(`${BASE}/b/lumen/lumen/sprint`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-sprint-view]', { timeout: 10000 });
+    const stat = (id) => page.locator(`[data-sprint-stat="${id}"]`).textContent();
+    assert(await stat('scope') === String(expected.sprint.scope),
+        `sprint scope counts the current cycle's issues (${expected.sprint.scope})`);
+    assert(await stat('inflight') === String(expected.sprint.inFlight),
+        `in flight = in progress + in review (${expected.sprint.inFlight}, includes the dragged #513)`);
+    assert(await stat('completed') === String(expected.sprint.completed),
+        `completed counts the done issues (${expected.sprint.completed})`);
+    assert(await stat('notstarted') === String(expected.sprint.notStarted),
+        `not started counts backlog + todo (${expected.sprint.notStarted})`);
+    assert((await page.locator('[data-sprint-pct]').textContent()).trim() === `${expected.sprint.pct}% complete`,
+        `the summary reads ${expected.sprint.pct}% complete`);
+    assert((await page.locator('[data-sprint-days-left]').textContent()).includes('days left'),
+        'the days-left pill renders');
+    assert(await page.locator('[data-sprint-lane="focus"] [data-sprint-row]').count() === expected.sprint.inFlight,
+        `the In focus lane lists every in-flight issue (${expected.sprint.inFlight})`);
+    assert(await page.locator('[data-sprint-lane="next"] [data-sprint-row]').count() === expected.sprint.upNext,
+        `the Up next lane lists the todo issues (${expected.sprint.upNext})`);
+    const firstFocus = await page.locator('[data-sprint-lane="focus"] [data-sprint-row]').first()
+        .getAttribute('data-sprint-row');
+    assert(firstFocus === String(expected.sprint.firstFocus),
+        `In focus sorts by priority (#${expected.sprint.firstFocus} first, got #${firstFocus})`);
+
+    // 5i) Backlog view: flat unstarted list, priority-sorted, mono status
+    // column.
+    await page.goto(`${BASE}/b/lumen/lumen/backlog`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-backlog-view]', { timeout: 10000 });
+    const backlogHeader = (await page.locator('[data-backlog-count]').textContent()).trim();
+    assert(backlogHeader === `${expected.backlog.count} unstarted issues · sorted by priority`,
+        `backlog header counts backlog+todo (${expected.backlog.count})`);
+    assert(await page.locator('[data-backlog-row]').count() === expected.backlog.count,
+        `backlog renders all ${expected.backlog.count} unstarted rows`);
+    const firstBacklog = await page.locator('[data-backlog-row]').first().getAttribute('data-backlog-row');
+    assert(firstBacklog === String(expected.backlog.first),
+        `backlog sorts by priority (#${expected.backlog.first} first, got #${firstBacklog})`);
+    const firstRowText = await page.locator(`[data-backlog-row="${firstBacklog}"]`).textContent();
+    assert(firstRowText.includes('P0') && firstRowText.includes('Todo'),
+        'the top backlog row carries its P0 chip and mono status name');
 
     // Setup revisited WITH a config: no redirect away, prefilled from it.
     await page.goto(`${BASE}/b/lumen/lumen/setup`, { waitUntil: 'load' });
