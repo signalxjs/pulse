@@ -53,10 +53,14 @@ export const Sidebar = component<SidebarProps>(({ props }) => {
                     </div>
                 </div>
 
-                {/* Search / command-palette button (palette lands in a later PR) */}
+                {/* Search / command-palette button (⌘K, pulse#54) */}
                 <div class="px-3 pb-2">
                     <button
                         type="button"
+                        onClick={() => {
+                            ui.setNavOpen(false);
+                            ui.openPalette();
+                        }}
                         class="flex w-full cursor-pointer items-center gap-[9px] rounded-[9px] border border-bd bg-bg2 px-2.5 py-2 text-left text-[12.5px] leading-[1.25] text-tm hover:border-bds hover:text-tx"
                     >
                         <IconSearch />

@@ -12,7 +12,10 @@ type IssueCardProps =
     Define.Prop<'config', BoardConfig, true> &
     /** Fired when the drag ends however it ends (drop or cancel) — the
      *  board clears its column highlight here. */
-    Define.Prop<'onDragEnd', () => void>;
+    Define.Prop<'onDragEnd', () => void> &
+    /** Fired on click (a completed drag suppresses the click natively) —
+     *  opens the detail slide-over. */
+    Define.Prop<'onOpen', () => void>;
 
 /** The PR type-glyph violet (handoff §4 — fixed hue, not the accent). */
 const PR_COLOR = 'oklch(0.7 0.15 285)';
@@ -40,6 +43,7 @@ export const IssueCard = component<IssueCardProps>(({ props }) => {
                 draggable
                 onDragStart={onDragStart}
                 onDragEnd={() => props.onDragEnd?.()}
+                onClick={() => props.onOpen?.()}
                 class={
                     'flex shrink-0 cursor-grab flex-col gap-2 rounded-[10px] border border-bd bg-bg2 ' +
                     'transition-[background-color,border-color] duration-[.12s] hover:border-bds hover:bg-bg3'
