@@ -2,7 +2,6 @@
  * @pulse/auth — typed surface. Implementation is JSDoc-typed ESM (it runs
  * under the no-transpiler `app/server.mjs`).
  */
-import type { Router, Request } from 'express';
 import type { GitHubClient, GitHubUser } from '@pulse/github';
 import type { PulseDb } from '@pulse/db';
 
@@ -28,7 +27,7 @@ export interface SessionStore {
  */
 export function createSessionStore(options: { db: PulseDb; secret: string; ttlMs?: number }): SessionStore;
 
-export interface AuthRouterOptions {
+export interface AuthHandlerOptions {
     sessions: SessionStore;
     secret: string;
     /** Fixtures mode: PAT sign-in accepts anything and grants the fixtures viewer. */
@@ -38,20 +37,28 @@ export interface AuthRouterOptions {
     /** GitHub OAuth app credentials; omit to run PAT-only. */
     oauth?: { clientId: string; clientSecret: string };
     /**
-     * Set the Secure attribute on every cookie this router issues. The
+     * Set the Secure attribute on every cookie this handler issues. The
      * caller decides (e.g. isProd && not an insecure-cookie opt-out) — the
      * package never sniffs env vars. Default false.
      */
     secureCookies?: boolean;
     /** OAuth token exchange fetch override (tests). */
     fetch?: typeof fetch;
+    /** Path prefix the handler owns. Default '/auth'. */
+    base?: string;
 }
 
 /**
- * Express router: GET /login (OAuth redirect), GET /callback (code
- * exchange), POST /pat (PAT sign-in), POST /logout. Mount under /auth.
+ * WinterCG fetch handler: GET <base>/login (OAuth redirect), GET
+ * <base>/callback (code exchange), POST <base>/pat (PAT sign-in), POST
+ * <base>/logout. Resolves to null for any other path/method — the caller
+ * falls through to its next handler.
  */
-export function createAuthRouter(options: AuthRouterOptions): Router;
+export function createAuthHandler(options: AuthHandlerOptions): (request: Request) => Promise<Response | null>;
 
-/** Resolve the request's session from the signed cookie, or null. */
-export function getSession(req: Request | { headers: { cookie?: string } }, sessions: SessionStore, secret: string): Promise<Session | null>;
+/**
+ * Resolve the request's session from the signed cookie, or null. Accepts
+ * the raw `cookie` header value (`request.headers.get('cookie')`) or a
+ * structural request ({ headers: { cookie } }).
+ */
+export function getSession(source: string | null | undefined | { headers: { cookie?: string } }, sessions: SessionStore, secret: string): Promise<Session | null>;
