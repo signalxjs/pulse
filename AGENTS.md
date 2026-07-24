@@ -131,6 +131,11 @@ Node ≥ 24 required (`node:sqlite`).
   Plain JSDoc-typed ESM (runs under the no-transpiler server) with a
   hand-written `index.d.ts` for app code.
 - `packages/auth` — GitHub OAuth + PAT sessions (M1 step 3).
+- `packages/db` → `@pulse/db` — async SQL seam: one D1-shaped `PulseDb`
+  interface with `node:sqlite` (local) and Cloudflare D1 (production)
+  drivers, `applyMigrations` over `app/migrations/*.sql` (wrangler-compatible
+  `d1_migrations` tracking), and the board-config store. Root export is
+  WinterCG-clean; `./sqlite` and `./migrate` are node-only.
 - `packages/forms` — Standard-Schema form state (M2).
 
 Support packages are workspace-private while they hatch; graduation to
