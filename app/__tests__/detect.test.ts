@@ -137,3 +137,28 @@ describe('detectBoard — a bare repo', () => {
         expect(det.milestoneCount).toBe(0);
     });
 });
+
+describe('duplicateMapping (saveBoard validation)', () => {
+    it('flags the same label on two status columns (case-insensitive)', async () => {
+        const { duplicateMapping } = await import('../src/server/mutations.server');
+        expect(duplicateMapping({
+            statuses: [
+                { label: 'status: todo' }, { label: 'Status: Todo' },
+                { label: null }, { label: null }, { label: null }
+            ],
+            priorities: { p0: null, p1: null, p2: null, p3: null }
+        })).toBe('Status: Todo');
+    });
+
+    it('flags the same label on two priorities, tolerates cross-dimension reuse and nulls', async () => {
+        const { duplicateMapping } = await import('../src/server/mutations.server');
+        expect(duplicateMapping({
+            statuses: [{ label: 'x' }, { label: null }, { label: null }, { label: null }, { label: null }],
+            priorities: { p0: 'urgent', p1: 'urgent', p2: null, p3: null }
+        })).toBe('urgent');
+        expect(duplicateMapping({
+            statuses: [{ label: 'shared' }, { label: null }, { label: null }, { label: null }, { label: null }],
+            priorities: { p0: 'shared', p1: null, p2: null, p3: null }
+        })).toBeNull();
+    });
+});

@@ -5,7 +5,7 @@
  * so the cache pack drops the affected read keys on arrival — the keys are
  * built from board/keys.ts, the same module the useData getters use.
  */
-import { serverFn } from '@sigx/server';
+import { serverFn, ServerFnError } from '@sigx/server';
 import * as v from 'valibot';
 import type { BoardConfig } from '@pulse/db';
 import { GitHubApiError } from '@pulse/github';
@@ -46,6 +46,31 @@ const BoardConfigInput = v.object({
 });
 
 /**
+ * One GitHub label can drive ONE slot. A label mapped to two status
+ * columns (or a status and a priority is fine — different dimensions, but
+ * two priorities isn't) makes derivation ambiguous: statusOf/priorityOf
+ * short-circuit on the first match and later slots become unreachable.
+ */
+export function duplicateMapping(config: {
+    statuses: { label: string | null }[];
+    priorities: Record<string, string | null>;
+}): string | null {
+    for (const group of [
+        config.statuses.map((s) => s.label),
+        Object.values(config.priorities)
+    ]) {
+        const seen = new Set<string>();
+        for (const label of group) {
+            if (label === null) continue;
+            const key = label.toLowerCase();
+            if (seen.has(key)) return label;
+            seen.add(key);
+        }
+    }
+    return null;
+}
+
+/**
  * Create or update a repo's board config. createdBy is preserved across
  * updates and stamped from the session on first save; the config-key
  * invalidation is what lets the post-setup navigation see the new board
@@ -55,6 +80,10 @@ export const saveBoard = serverFn({
     use: [withAuth],
     input: BoardConfigInput,
     async handler(rq, input): Promise<BoardConfig> {
+        const dup = duplicateMapping(input);
+        if (dup) {
+            throw new ServerFnError(400, `label "${dup}" is mapped to more than one slot`);
+        }
         const { user } = authed(rq);
         const { configStore } = services();
         const existing = await configStore.getBoard(input.owner, input.repo);
