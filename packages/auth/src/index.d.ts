@@ -22,8 +22,9 @@ export interface SessionStore {
 }
 
 /**
- * Session store over any PulseDb; tokens encrypted at rest (AES-256-GCM).
- * Requires the `sessions` table — apply the app migrations first.
+ * Session store over any PulseDb; tokens encrypted at rest (AES-256-GCM
+ * via WebCrypto, key HKDF-derived from the secret). Requires the
+ * `sessions` table — apply the app migrations first.
  */
 export function createSessionStore(options: { db: PulseDb; secret: string; ttlMs?: number }): SessionStore;
 
@@ -36,6 +37,12 @@ export interface AuthRouterOptions {
     makeClient(token: string): GitHubClient;
     /** GitHub OAuth app credentials; omit to run PAT-only. */
     oauth?: { clientId: string; clientSecret: string };
+    /**
+     * Set the Secure attribute on every cookie this router issues. The
+     * caller decides (e.g. isProd && not an insecure-cookie opt-out) — the
+     * package never sniffs env vars. Default false.
+     */
+    secureCookies?: boolean;
     /** OAuth token exchange fetch override (tests). */
     fetch?: typeof fetch;
 }

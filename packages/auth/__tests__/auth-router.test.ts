@@ -98,7 +98,7 @@ describe('GET /auth/login', () => {
 
 describe('GET /auth/callback', () => {
     it('403s on state mismatch', async () => {
-        const staged = sign('right-state:/', SECRET);
+        const staged = await sign('right-state:/', SECRET);
         const res = await get(`/auth/callback?state=wrong-state&code=abc`, `${STATE_COOKIE}=${encodeURIComponent(staged)}`);
         expect(res.status).toBe(403);
     });
@@ -109,17 +109,48 @@ describe('GET /auth/callback', () => {
     });
 
     it('400s when the code is missing', async () => {
-        const staged = sign('st-1:/', SECRET);
+        const staged = await sign('st-1:/', SECRET);
         const res = await get('/auth/callback?state=st-1', `${STATE_COOKIE}=${encodeURIComponent(staged)}`);
         expect(res.status).toBe(400);
     });
 
     it('signs in and redirects to the staged returnTo on the happy path', async () => {
-        const staged = sign('st-2:/projects', SECRET);
+        const staged = await sign('st-2:/projects', SECRET);
         const res = await get('/auth/callback?state=st-2&code=abc', `${STATE_COOKIE}=${encodeURIComponent(staged)}`);
         expect(res.status).toBe(303);
         expect(res.headers.get('location')).toBe('/projects');
-        expect(res.headers.get('set-cookie')).toContain('pulse_sid');
+        const setCookie = res.headers.get('set-cookie')!;
+        expect(setCookie).toContain('pulse_sid');
+        // This router was built without secureCookies — no Secure attribute
+        // (a Secure cookie over plain http would be dropped by the client).
+        expect(setCookie).not.toContain('Secure');
+    });
+});
+
+describe('secureCookies', () => {
+    it('marks issued cookies Secure when enabled', async () => {
+        const app2 = express();
+        const db2 = createSqliteDb();
+        await applyMigrations(db2, join(process.cwd(), 'app', 'migrations'));
+        app2.use('/auth', createAuthRouter({
+            sessions: createSessionStore({ db: db2, secret: SECRET }),
+            secret: SECRET,
+            fixtures: false,
+            secureCookies: true,
+            makeClient: (() => { throw new Error('unused — /login never builds a client'); }) as never,
+            oauth: { clientId: 'cid', clientSecret: 'cs' }
+        }));
+        const srv = await new Promise<Server>((resolve) => {
+            const s = app2.listen(0, () => resolve(s));
+        });
+        const address = srv.address();
+        const port = typeof address === 'object' && address ? address.port : 0;
+        try {
+            const res = await fetch(`http://127.0.0.1:${port}/auth/login`, { redirect: 'manual' });
+            expect(res.headers.get('set-cookie')).toContain('; Secure');
+        } finally {
+            await new Promise<void>((resolve) => srv.close(() => resolve()));
+        }
     });
 });
 

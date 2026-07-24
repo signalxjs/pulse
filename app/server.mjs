@@ -21,6 +21,11 @@ if (isProd && !process.env.PULSE_SECRET) {
     process.exit(1);
 }
 const secret = process.env.PULSE_SECRET ?? 'pulse-dev-secret-do-not-use-in-production';
+// Secure cookies in production — except when explicitly opted out for
+// plain-http localhost (CI smokes, local prod testing): a Secure cookie
+// over http is silently dropped by every client. The auth package never
+// sniffs env vars; this is the one place that decides.
+const secureCookies = isProd && process.env.PULSE_INSECURE_COOKIES !== '1';
 
 // Crawlers and AI agents get the blocking document: complete content
 // inline, nothing for the client to execute.
@@ -53,7 +58,7 @@ async function createServer() {
         getSession: (req) => getSession(req, sessions, secret)
     });
 
-    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient, oauth }));
+    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient, oauth, secureCookies }));
     app.use('/api/github', api);
     console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
 
