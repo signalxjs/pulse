@@ -1,42 +1,45 @@
 /**
  * Session storage — over the PulseDb seam (@pulse/db), GitHub tokens
- * encrypted at rest with AES-256-GCM (key derived from PULSE_SECRET via
- * scrypt). Session ids are random UUIDs; the cookie layer (cookies.js)
- * signs them so a forged sid never reaches the table. The `sessions` table
- * comes from the shared migrations (`app/migrations`) — apply them before
- * constructing the store; there is no inline DDL here.
+ * encrypted at rest with AES-256-GCM via WebCrypto (key HKDF-derived from
+ * PULSE_SECRET, info 'pulse-session-tokens'; derived once per store, the
+ * promise is cached). Session ids are random UUIDs; the cookie layer
+ * (cookies.js) signs them so a forged sid never reaches the table. The
+ * `sessions` table comes from the shared migrations (`app/migrations`) —
+ * apply them before constructing the store; there is no inline DDL here.
+ *
+ * token_enc format: `base64(iv) + '.' + base64(ciphertext‖tag)` — a
+ * 12-byte random IV, then the AES-GCM ciphertext with WebCrypto's
+ * appended 16-byte auth tag. Any blob that doesn't decrypt (old scrypt
+ * format, rotated secret, corruption) reads as an invalid session: the
+ * row is dropped and the user signs in again — never a 500.
  */
-import { randomUUID, randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:crypto';
+import { deriveKey, toBase64, fromBase64 } from './crypto.js';
 
-/** @param {string} secret */
-function deriveKey(secret) {
-    return scryptSync(secret, 'pulse-session-tokens', 32);
-}
+const enc = new TextEncoder();
+const dec = new TextDecoder();
 
 /**
- * @param {Buffer} key
+ * @param {Promise<CryptoKey>} key
  * @param {string} plaintext
  */
-function encrypt(key, plaintext) {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', key, iv);
-    const ct = Buffer.concat([cipher.update(plaintext, 'utf-8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    return Buffer.concat([iv, tag, ct]).toString('base64');
+async function encrypt(key, plaintext) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await key, enc.encode(plaintext));
+    return `${toBase64(iv)}.${toBase64(new Uint8Array(ct))}`;
 }
 
 /**
- * @param {Buffer} key
+ * @param {Promise<CryptoKey>} key
  * @param {string} payload
+ * @returns {Promise<string>} — rejects on any malformed/undecryptable blob (callers catch)
  */
-function decrypt(key, payload) {
-    const raw = Buffer.from(payload, 'base64');
-    const iv = raw.subarray(0, 12);
-    const tag = raw.subarray(12, 28);
-    const ct = raw.subarray(28);
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf-8');
+async function decrypt(key, payload) {
+    const dot = payload.indexOf('.');
+    if (dot <= 0) throw new Error('malformed token blob');
+    const iv = fromBase64(payload.slice(0, dot));
+    const ct = fromBase64(payload.slice(dot + 1));
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, await key, ct);
+    return dec.decode(pt);
 }
 
 /**
@@ -57,7 +60,13 @@ export function createSessionStore(options) {
     if (!options.db) {
         throw new Error('createSessionStore: a PulseDb is required (create one and apply the app migrations first)');
     }
-    const key = deriveKey(options.secret);
+    // Lazy, once per store: the first encrypt/decrypt kicks off derivation
+    // and everything else awaits the same promise.
+    /** @type {Promise<CryptoKey> | null} */
+    let keyPromise = null;
+    const key = () => keyPromise ??= deriveKey(
+        options.secret, 'pulse-session-tokens', { name: 'AES-GCM', length: 256 }, ['encrypt', 'decrypt']
+    );
     const db = options.db;
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
 
@@ -66,10 +75,10 @@ export function createSessionStore(options) {
             // Sweep on write, not just on expired reads — sign-in-and-forget
             // rows must age out even if their sid never comes back.
             await db.run('DELETE FROM sessions WHERE created_at < ?', Date.now() - ttlMs);
-            const sid = randomUUID();
+            const sid = crypto.randomUUID();
             await db.run(
                 'INSERT INTO sessions (sid, token_enc, login, name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                sid, encrypt(key, token), user.login, user.name, user.avatarUrl, Date.now()
+                sid, await encrypt(key(), token), user.login, user.name, user.avatarUrl, Date.now()
             );
             return sid;
         },
@@ -86,10 +95,11 @@ export function createSessionStore(options) {
             }
             let token;
             try {
-                token = decrypt(key, row.token_enc);
+                token = await decrypt(key(), row.token_enc);
             } catch {
-                // Corrupt row or rotated secret: an undecryptable session is
-                // an invalid session, never a 500. Drop the row.
+                // Corrupt row, old blob format, or rotated secret: an
+                // undecryptable session is an invalid session, never a 500.
+                // Drop the row.
                 await db.run('DELETE FROM sessions WHERE sid = ?', sid);
                 return null;
             }
