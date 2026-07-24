@@ -95,6 +95,12 @@ over the real D1 database.
 
 ## 5. GitHub Actions secrets (continuous deploy)
 
+> ⚠️ Once this workflow is on `main`, EVERY merge triggers a deploy run —
+> and it fails (red, harmless, no partial deploy) until both secrets below
+> exist. Set them before merging the workflow, or expect failed runs and
+> re-run them via *workflow_dispatch* once the secrets land. Manual local
+> deploys (§4) keep working either way.
+
 The workflow authenticates with an API token, not your OAuth login. In the
 Cloudflare dashboard (My Profile → API Tokens → *Create Token*), start from
 the **Edit Cloudflare Workers** template and set the permissions to:
