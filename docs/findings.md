@@ -246,7 +246,7 @@ notes on the adapter itself:
   `INEFFECTIVE_DYNAMIC_IMPORT` warning — the fn registry dynamically
   imports `repos.server.ts`, which the Dashboard also imports statically.
 
-### F15 — streamed `$SIGX_REPLACE` regions break the hydrated tree: next patch crashes with `parentNode` of null (R1 · to file on core)
+### F15 — streamed `$SIGX_REPLACE` regions break the hydrated tree: next patch crashes with `parentNode` of null (R1 · core#478)
 Hit building the board's config-guard read (pulse#40). A `useData` cell
 that settles DURING streaming SSR makes the renderer emit a
 component-level `$SIGX_REPLACE(id, html)` patch (both for bare `.value`
