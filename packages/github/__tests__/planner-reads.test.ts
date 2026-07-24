@@ -94,6 +94,14 @@ describe('createLiveClient — repoIssues paging', () => {
         expect(calls[1]!.url).not.toContain('page=0');
     });
 
+    it('non-finite paging options fall back to the defaults', async () => {
+        const { stub, calls } = fetchStub([{ status: 200, body: [], etag: '"a"' }]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        await gh.repoIssues('o', 'r', { page: Number.NaN, perPage: Number.POSITIVE_INFINITY });
+        expect(calls[0]!.url).toContain('per_page=100');
+        expect(calls[0]!.url).not.toContain('page=NaN');
+    });
+
     it('passes state/page/labels/milestone/since through to the query', async () => {
         const { stub, calls } = fetchStub([{ status: 200, body: [], etag: '"x"' }]);
         const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });

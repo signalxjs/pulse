@@ -7,8 +7,10 @@
  * @returns {{ page: number, perPage: number }}
  */
 export function clampPaging(page, perPage) {
+    const p = Number.isFinite(page) ? Math.floor(/** @type {number} */ (page)) : 1;
+    const pp = Number.isFinite(perPage) ? Math.floor(/** @type {number} */ (perPage)) : 100;
     return {
-        page: Math.max(1, Math.floor(page ?? 1)),
-        perPage: Math.min(100, Math.max(1, Math.floor(perPage ?? 100)))
+        page: Math.max(1, p),
+        perPage: Math.min(100, Math.max(1, pp))
     };
 }
