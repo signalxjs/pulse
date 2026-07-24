@@ -201,6 +201,15 @@ notes on the adapter itself:
   never touched either; its `generate()` drift checks (main / assets dir /
   html_handling substrings) all passed silently. The validate-don't-write
   behavior on an existing config is exactly right for a real app.
+- **`collectAssets` is node-locked** (hit at pulse#39's rebase): the worker
+  entry needs per-route chunk preloads, and `virtual:sigx-app` helpfully
+  exports the client `manifest` — but the traversal helper that turns it
+  into preload lists, `collectAssets`, is only exported from
+  `@sigx/vite/ssr`, whose module top-level imports `node:fs/promises` and
+  `node:path`. Under the workerd-conditioned bundle that graph cannot
+  resolve, so Pulse carries a WinterCG port (`app/src/collect-assets.ts`).
+  The helper is pure — upstream should export it from a platform-clean
+  module (candidate core issue).
 - **The `html_handling` gotcha never fired** — but only because the
   starter-config comment chain flows into rfc-deploy and the examples;
   copying the resume example's `"none"` from day one meant the raw outlet

@@ -18,7 +18,8 @@
 // `d1_migrations` table, so the two never disagree.
 import { createFetchHandler } from '@sigx/server-renderer/server';
 import { handleServerFnRequest, matchesServerFn } from '@sigx/server/server';
-import { template, assets } from 'virtual:sigx-app';
+import { template, assets, manifest } from 'virtual:sigx-app';
+import { collectAssets } from './collect-assets';
 import { serverFns } from 'virtual:sigx-server-fns';
 import { createSessionStore, createAuthHandler, getSession } from '@pulse/auth';
 import { createD1Db, type D1DatabaseLike } from '@pulse/db/d1';
@@ -94,6 +95,12 @@ function init(env: Env): Handlers {
     const auth = createAuthHandler({
         sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies
     });
+    // Route-chunk preloads, mirroring server.mjs: board documents preload
+    // the lazy BoardPage chunk so SSR'd markup hydrates without a second
+    // network hop. Computed once per isolate from the client manifest that
+    // virtual:sigx-app exports (collectAssets is a local WinterCG port —
+    // see src/collect-assets.ts / findings F14).
+    const boardAssets = collectAssets(manifest, ['src/entry-client.tsx', 'src/board/BoardPage.tsx']);
     const document = createFetchHandler({
         template,
         // Per-request SSR context: the signed-in user, for the auth guard.
@@ -104,7 +111,7 @@ function init(env: Env): Handlers {
             user: (await getSession(request.headers.get('cookie'), sessions, secret))?.user ?? null
         }),
         isBot,
-        document: { assets }
+        document: (url) => ({ assets: url.startsWith('/b/') ? boardAssets : assets })
     });
 
     handlers = { auth, document };
