@@ -66,7 +66,7 @@ export const NewIssue = component<NewIssueProps>(({ props }) => {
                 owner: props.owner,
                 repo: props.repo,
                 title,
-                ...(form.body.trim() !== '' && { body: form.body }),
+                ...(form.body.trim() !== '' && { body: form.body.trim() }),
                 priority: form.priority === '' ? null : form.priority,
                 status: form.status === '' ? null : form.status
             });

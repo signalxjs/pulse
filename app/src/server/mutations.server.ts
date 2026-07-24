@@ -224,7 +224,7 @@ const NewIssueInput = v.object({
     owner: segment,
     repo: segment,
     title: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(256)),
-    body: v.optional(v.pipe(v.string(), v.maxLength(65536))),
+    body: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(65536))),
     /** Priority slot — mapped to the config's priority label; null = none. */
     priority: v.optional(v.nullable(v.picklist(PRIORITY_IDS))),
     /** Target column — mapped to the config's status label; null = none. */
