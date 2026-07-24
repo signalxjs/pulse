@@ -10,7 +10,9 @@ type BacklogViewProps =
     /** The working set AFTER the chrome filters (BoardPage applies them). */
     Define.Prop<'issues', GitHubIssue[], true> &
     Define.Prop<'config', BoardConfig, true> &
-    Define.Prop<'loading', boolean>;
+    Define.Prop<'loading', boolean> &
+    /** Opens the issue detail slide-over (handoff §8: rows open detail). */
+    Define.Prop<'onOpen', (number: number) => void, true>;
 
 /**
  * The Backlog view (handoff §8): "N unstarted issues · sorted by priority"
@@ -19,8 +21,7 @@ type BacklogViewProps =
  * `16px 30px 66px 1fr auto auto` grid: drag handle, priority chip, mono
  * ref, title + inline label pills, mono status name, assignee avatars.
  * The drag handle is decorative for now (reordering is a later PR) —
- * aria-hidden, no drag wiring. Rows stay inert like the List view's until
- * the detail panel lands.
+ * aria-hidden, no drag wiring. Clicking a row opens the detail slide-over.
  */
 export const BacklogView = component<BacklogViewProps>(({ props }) => () => {
     const config = props.config;
@@ -52,7 +53,16 @@ export const BacklogView = component<BacklogViewProps>(({ props }) => () => {
                         <div
                             key={issue.number}
                             data-backlog-row={issue.number}
-                            class="grid grid-cols-[16px_30px_66px_1fr_auto_auto] items-center gap-3 border-b border-bd px-1.5 hover:bg-bg1"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => props.onOpen(issue.number)}
+                            onKeyDown={(e: KeyboardEvent) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    props.onOpen(issue.number);
+                                }
+                            }}
+                            class="grid cursor-pointer grid-cols-[16px_30px_66px_1fr_auto_auto] items-center gap-3 border-b border-bd px-1.5 hover:bg-bg1"
                             style="height:var(--rowh)"
                         >
                             <span aria-hidden="true" class="flex flex-col items-center gap-[2px] text-tf">

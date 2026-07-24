@@ -49,7 +49,9 @@ export const SprintView = component<SprintViewProps>(({ props }) => () => {
     // overdue cycle reads "0 days left" rather than a negative.
     const daysLeft = Math.max(0, Math.ceil((Date.parse(cycle.end) - Date.now()) / DAY));
     const scoped = props.issues.filter((i) => i.milestone?.number === cycle.number);
-    // One pass over the scoped issues, statusOf computed once each.
+    // Classify the scoped issues into the two lanes in one pass. (Stats
+    // above scan the same set separately — merging both is possible but
+    // sprintStats is shared with tests, so the lanes stay their own pass.)
     const focus: typeof scoped = [];
     const next: typeof scoped = [];
     for (const i of scoped) {

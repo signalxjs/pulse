@@ -43,8 +43,11 @@ function expectedViewNumbers() {
     // The 5d drag moved #513 into In Progress — apply it to the disk data.
     const dragged = { 513: 'inprogress' };
     const statusOf = (i) => {
-        if (dragged[i.number]) return dragged[i.number];
+        // Mirror derive.statusOf's precedence: closed → done wins over any
+        // label (and over a drag override) so the expectations stay aligned
+        // if a fixture ever has a closed, dragged, or mislabeled issue.
         if (i.state === 'closed') return 'done';
+        if (dragged[i.number]) return dragged[i.number];
         for (const l of i.labels) {
             const s = statusLabels[l.name.toLowerCase()];
             if (s) return s;

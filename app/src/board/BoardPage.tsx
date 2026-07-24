@@ -380,7 +380,7 @@ const BoardPage = component(() => {
                                     return <ListView issues={working} config={config} loading={loading} onOpen={openDetail} />;
                                 }
                                 if (view!.key === 'backlog') {
-                                    return <BacklogView issues={working} config={config} loading={loading} />;
+                                    return <BacklogView issues={working} config={config} loading={loading} onOpen={openDetail} />;
                                 }
                                 // Roadmap/Sprint ride the milestone-backed
                                 // cycles; with cycleSource 'none' they get
