@@ -1,17 +1,26 @@
 // Pulse browser smoke — the M1 gate (pulse#1), fixture mode (tokenless,
-// deterministic). Requires a prior prod build:
+// deterministic). ONE assertion set, two servers ("serves identically" is
+// the exit criterion, rfc-deploy §6):
 //
-//   pnpm build && pnpm smoke
+//   pnpm build            && pnpm smoke       # node: dist/ over server.mjs
+//   pnpm build:cloudflare && pnpm smoke:cf    # workerd: dist-cf/ over wrangler dev
+//
+// The --cf mode applies the D1 migrations --local first (wrangler and
+// packages/db's runner track the same d1_migrations table), then spawns
+// `wrangler dev` over the built worker — real workerd, real assets config.
 //
 // Real-Chrome UA throughout: HeadlessChrome matches the isBot regex and
 // would get the blocking document instead of the streaming human path.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const PORT = Number(process.env.PORT) || 4180;
+const CF = process.argv.includes('--cf');
+// Distinct default ports so a node smoke and a cf smoke never collide.
+const PORT = Number(process.env.PORT) || (CF ? 4181 : 4180);
 const BASE = `http://localhost:${PORT}`;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
+const APP_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 function assert(cond, message) {
     if (!cond) {
@@ -20,7 +29,7 @@ function assert(cond, message) {
     console.log(`✔ ${message}`);
 }
 
-async function waitForServer(url, timeoutMs = 15000) {
+async function waitForServer(url, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         try {
@@ -32,27 +41,59 @@ async function waitForServer(url, timeoutMs = 15000) {
     throw new Error(`❌ pulse-smoke: server did not come up on ${url}`);
 }
 
-const server = spawn(
-    process.execPath,
-    ['--conditions', 'production', 'server.mjs'],
-    {
-        cwd: fileURLToPath(new URL('.', import.meta.url)),
-        env: {
-            ...process.env,
-            NODE_ENV: 'production',
-            PORT: String(PORT),
-            PULSE_FIXTURES: '1',
-            PULSE_SECRET: 'smoke-secret',
-            PULSE_INSECURE_COOKIES: '1'
-        },
-        // Inherit server output — CI failures need the startup logs.
-        stdio: 'inherit'
+function startNodeServer() {
+    return spawn(
+        process.execPath,
+        ['--conditions', 'production', 'server.mjs'],
+        {
+            cwd: APP_DIR,
+            env: {
+                ...process.env,
+                NODE_ENV: 'production',
+                PORT: String(PORT),
+                PULSE_FIXTURES: '1',
+                PULSE_SECRET: 'smoke-secret',
+                PULSE_INSECURE_COOKIES: '1'
+            },
+            // Inherit server output — CI failures need the startup logs.
+            stdio: 'inherit'
+        }
+    );
+}
+
+function startWorkerd() {
+    const env = { ...process.env, WRANGLER_SEND_METRICS: 'false' };
+    // Schema first: the worker never applies migrations itself (wrangler
+    // owns the schema on this target). --local writes .wrangler/state, the
+    // same store `wrangler dev` reads below.
+    const migrate = spawnSync(
+        'npx',
+        ['wrangler', 'd1', 'migrations', 'apply', 'pulse', '--local'],
+        { cwd: APP_DIR, env, stdio: 'inherit' }
+    );
+    if (migrate.status !== 0) {
+        throw new Error('❌ pulse-smoke: wrangler d1 migrations apply --local failed');
     }
-);
+    return spawn(
+        'npx',
+        [
+            'wrangler', 'dev', '--local', '--port', String(PORT),
+            // Workers read config vars, not process env — same trio the
+            // node smoke exports.
+            '--var', 'PULSE_FIXTURES:1',
+            '--var', 'PULSE_SECRET:smoke-secret',
+            '--var', 'PULSE_INSECURE_COOKIES:1'
+        ],
+        { cwd: APP_DIR, env, stdio: 'inherit' }
+    );
+}
+
+const server = CF ? startWorkerd() : startNodeServer();
 
 let browser;
 try {
-    await waitForServer(`${BASE}/`);
+    // Generous in cf mode: wrangler's first run may still download workerd.
+    await waitForServer(`${BASE}/`, CF ? 120000 : 15000);
 
     // ---- HTTP-level contract (no browser) ----
     const signedOut = await fetch(`${BASE}/`, { redirect: 'manual', headers: { 'user-agent': UA } });
@@ -147,9 +188,21 @@ try {
     const afterLogout = await fetch(`${BASE}/`, { redirect: 'manual', headers: { 'user-agent': UA, cookie: `pulse_sid=${encodeURIComponent(sid.value)}` } });
     assert(afterLogout.status === 302, 'the old session cookie is dead server-side after logout');
 
-    console.log('pulse-smoke: ALL PASSED');
+    console.log(`pulse-smoke${CF ? ' (workerd)' : ''}: ALL PASSED`);
 } finally {
     await browser?.close();
     server.kill('SIGTERM');
+    // wrangler shuts workerd down on SIGTERM — wait for it (bounded), then
+    // force-kill, so a lingering child can never wedge CI.
+    await new Promise((resolve) => {
+        const force = setTimeout(() => {
+            server.kill('SIGKILL');
+            resolve();
+        }, 5000);
+        server.once('exit', () => {
+            clearTimeout(force);
+            resolve();
+        });
+    });
 }
 process.exit(0);

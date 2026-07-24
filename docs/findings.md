@@ -180,6 +180,55 @@ DX notes from the adoption:
   `withAuth` chain requires a session on every transport, so the smoke's
   "tokenless API" assertion became "unauthenticated fn call answers 401".
 
+### F14 — @sigx/cloudflare adoption: full app on workerd first try; entry hand-written, scaffold unused (R4 · validated, no issue)
+Pulse's Cloudflare target (pulse#42) — auth + D1 sessions + serverFns +
+streaming documents under real workerd via `wrangler dev --local` — passed
+the ENTIRE node smoke assertion set on the first complete run. Adoption
+notes on the adapter itself:
+
+- **Scaffold vs hand-written**: the adapter's scaffold-iff-absent posture
+  worked as designed — we wrote `src/entry.cloudflare.ts` and
+  `wrangler.jsonc` by hand BEFORE the first build (Pulse needs D1 +
+  per-isolate service init the scaffold can't know about), and the adapter
+  never touched either; its `generate()` drift checks (main / assets dir /
+  html_handling substrings) all passed silently. The validate-don't-write
+  behavior on an existing config is exactly right for a real app.
+- **The `html_handling` gotcha never fired** — but only because the
+  starter-config comment chain flows into rfc-deploy and the examples;
+  copying the resume example's `"none"` from day one meant the raw outlet
+  index.html was never served for `GET /`. The adapter's warn-if-absent
+  check is the right guard for people who write the config cold.
+- **Virtual-module ergonomics are good**: `virtual:sigx-app` (template +
+  assets, inlined from the client build) + `virtual:sigx-server-fns`
+  replace the node server's four runtime `readFile`/`import` calls with two
+  imports. Cost: the TYPES for both modules are copy-pasted ambient
+  declarations from the example's `env.d.ts` (`app/src/env.cloudflare.d.ts`
+  here) — `@sigx/vite` could ship them as a referenceable `.d.ts`
+  (`/// <reference types="@sigx/vite/virtual" />`-style) instead of asking
+  every app to re-declare them. Candidate ergonomics issue on core.
+- **Per-isolate init is the one real divergence from node**: server.mjs
+  builds services at boot; a worker only sees `env` on a fetch, so
+  `__PULSE_SERVER__` is built lazily on the first fetch and cached
+  (bindings are stable per isolate). The `services.server.ts` accessor
+  needed ZERO changes — `globalThis` really is the seam that survives both
+  module graphs, as F13 predicted ("a worker entry sets the same global
+  from its env").
+- **Migrations split cleanly**: `wrangler d1 migrations apply` and
+  `packages/db`'s runner share the `d1_migrations` tracking schema (a
+  deliberate day-one choice), so the worker never applies migrations at
+  runtime and the two runners agree on what's applied.
+- **`wrangler dev --local` tolerates a placeholder `database_id`** —
+  local D1 state keys off the binding, so the committed config can carry
+  `"TBD-provisioned-in-deploy-pr"` until a deploy PR runs
+  `wrangler d1 create`. CI needs `onlyBuiltDependencies: [esbuild, workerd]`
+  in `pnpm-workspace.yaml` (pnpm 10 blocks their install scripts, and
+  workerd without its postinstall has no binary).
+- Bundle shape: the ssr build emits the worker as `entry.cloudflare.js`
+  plus one shared `assets/sigx-*.js` chunk (not strictly single-file);
+  wrangler dev follows the relative import fine. One benign
+  `INEFFECTIVE_DYNAMIC_IMPORT` warning — the fn registry dynamically
+  imports `repos.server.ts`, which the Dashboard also imports statically.
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first

@@ -2,6 +2,13 @@ packages:
   - app
   - packages/*
 
+# wrangler's workerd binary ships via a platform package whose install
+# script places the executable — without approval `wrangler dev` has no
+# runtime. esbuild is wrangler's bundler dep, same install-script story.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+
 # Single source of truth for the SignalX core version this repo builds against.
 # `^0.12.0` == `>=0.12.0 <0.13.0` (ONE minor).
 # @sigx/reactivity keeps reactive state in module-local variables, so two physical
@@ -11,6 +18,7 @@ packages:
 # `"catalog:"` in package.json; `pnpm pack` rewrites it to the concrete range.
 catalog:
   "@sigx/cache": ^0.13.0
+  "@sigx/cloudflare": ^0.13.0
   "@sigx/reactivity": ^0.13.0
   "@sigx/runtime-core": ^0.13.0
   "@sigx/runtime-dom": ^0.13.0

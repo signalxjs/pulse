@@ -1,0 +1,37 @@
+{
+    "name": "pulse",
+    "main": "dist-cf/server/entry.cloudflare.js",
+    "account_id": "191d544fe3008058590f9656d041b3a3",
+    "compatibility_date": "2026-07-01",
+    // AsyncLocalStorage (node:async_hooks) is what carries the request into
+    // in-process server-function calls during SSR — rfc-server §7 v1.1.
+    // workerd has no node:async_hooks without this flag, so the ambient
+    // request scope cannot open: the render still works, but a serverFn
+    // called during SSR (withAuth!) would fall back to the request-less
+    // detached context and every SSR data read would 401.
+    "compatibility_flags": ["nodejs_compat"],
+    "assets": {
+        "directory": "dist-cf/client",
+        // LOAD-BEARING: the client outDir contains index.html (the raw
+        // outlet template), and the default auto-trailing-slash handling
+        // would serve it verbatim for GET / BEFORE the worker runs. "none"
+        // limits the asset router to exact file paths, so documents always
+        // reach the worker.
+        "html_handling": "none"
+    },
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "pulse",
+            // Placeholder until the deploy PR provisions the real database
+            // (`wrangler d1 create pulse`). Local flows never read it:
+            // `wrangler dev --local` and `d1 migrations apply --local` key
+            // local state off the binding/name — verified by pnpm smoke:cf.
+            "database_id": "TBD-provisioned-in-deploy-pr",
+            "migrations_dir": "migrations"
+        }
+    ],
+    "observability": {
+        "enabled": true
+    }
+}

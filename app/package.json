@@ -7,8 +7,10 @@
     "scripts": {
         "dev": "node server.mjs",
         "build": "vite build --app",
+        "build:cloudflare": "vite build --app -c vite.config.cloudflare.ts",
         "start": "cross-env NODE_ENV=production node --conditions production server.mjs",
-        "smoke": "node smoke.mjs"
+        "smoke": "node smoke.mjs",
+        "smoke:cf": "node smoke.mjs --cf"
     },
     "dependencies": {
         "sigx": "catalog:",
@@ -30,12 +32,14 @@
         "@pulse/db": "workspace:*"
     },
     "devDependencies": {
+        "@sigx/cloudflare": "catalog:",
         "@sigx/vite": "catalog:",
         "@tailwindcss/vite": "^4.2.4",
         "@types/express": "^5.0.6",
         "@types/node": "^26.1.1",
         "cross-env": "^10.1.0",
         "typescript": "^7.0.2",
-        "vite": "^8.1.4"
+        "vite": "^8.1.4",
+        "wrangler": "^4.114.0"
     }
 }

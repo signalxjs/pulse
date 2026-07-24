@@ -44,10 +44,13 @@ parallel checkouts.
 | Task | Command |
 |---|---|
 | Build | `pnpm build` |
+| Build (Cloudflare worker) | `pnpm build:cloudflare` |
 | Run tests | `pnpm test` |
 | Tests in watch mode | `pnpm test:watch` |
 | Typecheck | `pnpm typecheck` |
 | Lint | `pnpm lint` |
+| Browser smoke (node) | `pnpm build && pnpm smoke` |
+| Browser smoke (workerd) | `pnpm build:cloudflare && pnpm smoke:cf` |
 
 ## Pre-push checklist
 

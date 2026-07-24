@@ -76,5 +76,33 @@ jobs:
       - name: Browser smoke (fixture mode)
         run: pnpm smoke
 
+  smoke-cf:
+    # The SAME assertion set as `smoke`, against the bundled worker under
+    # real workerd (`wrangler dev --local` over dist-cf/, local D1) —
+    # rfc-deploy §6's "serves identically" criterion. Ubuntu-only: the
+    # deploy target is linux workerd; the node smoke covers cross-platform.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build (cloudflare)
+        run: pnpm build:cloudflare
+
+      - name: Browser smoke over workerd (fixture mode)
+        run: pnpm smoke:cf
+
   # verify-pack returns if/when packages/ start publishing (they are
   # workspace-private while they hatch).
