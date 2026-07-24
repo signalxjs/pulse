@@ -50,9 +50,11 @@ const BoardPage = component(() => {
             >
                 {/* Off-canvas scrim (<900px, handoff §Responsive) */}
                 {ui.navOpen && (
-                    <div
+                    <button
+                        type="button"
+                        aria-label="Close navigation"
                         onClick={() => ui.setNavOpen(false)}
-                        class="fixed inset-0 z-[55] animate-fade-in bg-[rgba(4,5,8,.55)] min-[900px]:hidden"
+                        class="fixed inset-0 z-[55] animate-fade-in cursor-default bg-[rgba(4,5,8,.55)] min-[900px]:hidden"
                     />
                 )}
                 <Sidebar owner={owner} repo={repo} view={view.key} labels={[]} team={[]} />
@@ -73,6 +75,7 @@ const BoardPage = component(() => {
                                             <div class="flex-1" />
                                             <button
                                                 type="button"
+                                                aria-label={`New issue in ${s.name}`}
                                                 class="size-[22px] cursor-pointer rounded-md text-base leading-none text-tf hover:bg-bg2 hover:text-tx"
                                             >
                                                 +

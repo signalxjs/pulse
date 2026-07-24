@@ -50,6 +50,7 @@ export const Header = component<HeaderProps>(({ props }) => {
                 <input
                     value={ui.query}
                     onInput={(e: Event) => ui.setQuery((e.target as HTMLInputElement).value)}
+                    aria-label="Filter issues"
                     placeholder="Filter…  /"
                     class="w-[190px] rounded-lg border border-bd bg-bg2 py-[7px] pr-2.5 pl-[26px] text-[12.5px] leading-[1.25] text-tx outline-none focus:border-ac"
                 />
