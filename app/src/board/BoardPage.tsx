@@ -1,16 +1,20 @@
-import { component, effect, useData, useHead } from 'sigx';
+import { component, effect, signal, useData, useHead } from 'sigx';
 import { useRoute, useRouter } from '@sigx/router';
-import type { BoardConfig } from '@pulse/db';
+import type { BoardConfig, BoardStatusId } from '@pulse/db';
+import type { GitHubIssue } from '@pulse/github';
 import { NotFound } from '../pages/NotFound';
 import { Sidebar } from './chrome/Sidebar';
 import { Header } from './chrome/Header';
 import { FilterBar } from './chrome/FilterBar';
 import { useBoardUiStore, DEFAULT_ACCENT_HUE } from '../stores/boardUi';
 import { boardIssues, boardLabels, boardPeople, getBoard } from '../server/board.server';
-import { labelsFor, peopleFor, statusOf } from './derive';
+import { moveIssue } from '../server/mutations.server';
+import { filterIssues, labelsFor, moveLabels, peopleFor, statusOf } from './derive';
 import { boardKeys } from './keys';
-import { STATUSES } from './colors';
 import { SetupPage } from './SetupPage';
+import { BoardView } from './BoardView';
+import { ListView } from './ListView';
+import { Toast } from './components/Toast';
 import { VIEWS, isViewKey } from './views';
 
 /**
@@ -99,48 +103,66 @@ const BoardPage = component(() => {
         }
     });
 
-    /** The board columns for one config, with REAL per-status counts —
-     *  the cards themselves (and drag-and-drop) are the next PR. */
-    const boardColumns = (config: BoardConfig) => {
-        const issueList = issues.value ?? [];
-        const counts = new Map<string, number>();
-        for (const issue of issueList) {
-            const id = statusOf(issue, config);
-            counts.set(id, (counts.get(id) ?? 0) + 1);
+    // ---- Toast (minimal inline — the full toast system is a later PR) ----
+    const toast = signal<{ message: string | null }>({ message: null });
+    let toastTimer: ReturnType<typeof setTimeout> | null = null;
+    const showToast = (message: string) => {
+        if (toastTimer !== null) clearTimeout(toastTimer);
+        toast.message = message;
+        toastTimer = setTimeout(() => {
+            toastTimer = null;
+            toast.message = null;
+        }, 4000);
+    };
+
+    /** Optimistic write-through to the issues cell (@sigx/cache mutate —
+     *  present with the cache pack installed; a silent no-op otherwise). */
+    const mutateIssues = (up: (list: GitHubIssue[]) => GitHubIssue[]): boolean => {
+        if (!issues.mutate) return false;
+        issues.mutate((current: GitHubIssue[] | null) => up(current ?? []));
+        return true;
+    };
+
+    /**
+     * A card was dropped on a column: patch the issues cell IMMEDIATELY
+     * (the same moveLabels derivation the server applies, so statusOf lands
+     * the card in the target column), then persist through moveIssue and
+     * reconcile from its response — the mutation's declared `invalidates`
+     * does not reach mounted cells (findings F15), so reconciliation is
+     * explicit. On failure: refetch server truth + toast.
+     */
+    const onMove = async (config: BoardConfig, number: number, target: BoardStatusId) => {
+        const { owner, repo } = params();
+        const current = (issues.value ?? []).find((i) => i.number === number);
+        if (!current || statusOf(current, config) === target) return;
+        const patch = moveLabels(config, current.labels.map((l) => l.name), target);
+        // Rebuild label OBJECTS from the patch's names: keep the issue's
+        // own, look the added status label up in the repo labels, and as a
+        // last resort synthesize a grey — render-only until reconciled.
+        const repoLabels = new Map((labels.value ?? []).map((l) => [l.name.toLowerCase(), l]));
+        const state = patch.state ?? current.state;
+        const optimistic: GitHubIssue = {
+            ...current,
+            state,
+            closedAt: state === 'closed' ? (current.closedAt ?? new Date().toISOString()) : null,
+            labels: patch.labels.map((name) =>
+                current.labels.find((l) => l.name.toLowerCase() === name.toLowerCase())
+                ?? repoLabels.get(name.toLowerCase())
+                ?? { name, color: '5f6472', description: null })
+        };
+        const applied = mutateIssues((list) => list.map((i) => (i.number === number ? optimistic : i)));
+        try {
+            const updated = await moveIssue({ owner, repo, number, target });
+            if (applied) {
+                mutateIssues((list) => list.map((i) => (i.number === number ? updated : i)));
+            } else {
+                issues.refresh();
+            }
+        } catch (err) {
+            // Roll back to server truth — the optimistic value is stale.
+            issues.refresh();
+            showToast(`Couldn't move #${number}: ${err instanceof Error ? err.message : String(err)}`);
         }
-        const loading = issues.state !== 'ready';
-        return (
-            <div class="flex h-full items-start gap-3.5 overflow-x-auto px-[18px] py-4">
-                {STATUSES.map((s) => (
-                    <section key={s.id} data-column={s.id} class="flex h-full w-[292px] shrink-0 flex-col">
-                        <div class="flex items-center gap-2 px-1 pt-0.5 pb-2.5">
-                            <span class="size-[9px] rounded-full" style={`background:${s.dot}`} />
-                            <span class="text-[12.5px] font-semibold">{s.name}</span>
-                            <span data-column-count class="rounded-full bg-bg2 px-[7px] py-px font-mono text-[11px] text-tf">
-                                {counts.get(s.id) ?? 0}
-                            </span>
-                            <div class="flex-1" />
-                            <button
-                                type="button"
-                                aria-label={`New issue in ${s.name}`}
-                                class="size-[22px] cursor-pointer rounded-md text-base leading-none text-tf hover:bg-bg2 hover:text-tx"
-                            >
-                                +
-                            </button>
-                        </div>
-                        <div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-[9px] overflow-y-auto rounded-xl bg-bg1 p-2">
-                            <span class="text-[11.5px] text-tf">
-                                {loading
-                                    ? 'Loading issues…'
-                                    : (counts.get(s.id) ?? 0) === 0
-                                        ? 'No issues'
-                                        : `${counts.get(s.id)} issue${counts.get(s.id) === 1 ? '' : 's'} — cards land in the next PR`}
-                            </span>
-                        </div>
-                    </section>
-                ))}
-            </div>
-        );
     };
 
     return () => {
@@ -239,8 +261,26 @@ const BoardPage = component(() => {
                                         </div>
                                     );
                                 }
+                                // Both primary views render the SAME
+                                // filtered working set (shared helper —
+                                // they can never drift).
+                                const working = filterIssues(issueList, {
+                                    query: ui.query,
+                                    filterLabel: ui.filterLabel
+                                });
+                                const loading = issues.state !== 'ready';
                                 if (view!.key === 'board') {
-                                    return boardColumns(config);
+                                    return (
+                                        <BoardView
+                                            issues={working}
+                                            config={config}
+                                            loading={loading}
+                                            onMove={(number, target) => void onMove(config, number, target)}
+                                        />
+                                    );
+                                }
+                                if (view!.key === 'list') {
+                                    return <ListView issues={working} config={config} loading={loading} />;
                                 }
                                 return (
                                     <div class="flex h-full items-center justify-center">
@@ -251,6 +291,7 @@ const BoardPage = component(() => {
                         })}
                     </div>
                 </main>
+                {toast.message !== null && <Toast message={toast.message} />}
             </div>
         );
     };

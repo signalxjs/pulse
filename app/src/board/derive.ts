@@ -80,6 +80,86 @@ export function moveLabels(
     return { labels, state: 'open' };
 }
 
+/** The mapped status/priority label names (lowercased) — represented by
+ *  columns and P-chips, so never rendered as tag pills. */
+function mappedLabelSet(config: BoardConfig | null): Set<string> {
+    if (!config) return new Set();
+    return new Set(
+        [
+            ...config.statuses.map((s) => s.label),
+            config.priorities.p0, config.priorities.p1, config.priorities.p2, config.priorities.p3
+        ]
+            .filter((l): l is string => l !== null)
+            .map((l) => l.toLowerCase())
+    );
+}
+
+/**
+ * The tag pills one card/row renders: the issue's labels minus the ones the
+ * config maps to statuses/priorities (those surface as the column and the
+ * P-chip), hue-derived from each label's real hex. Greys (and malformed
+ * colors) carry `hue: null` — the pill renders in the neutral tokens.
+ */
+export function cardLabels(
+    issue: GitHubIssue,
+    config: BoardConfig | null
+): { key: string; name: string; hue: number | null }[] {
+    const mapped = mappedLabelSet(config);
+    return issue.labels
+        .filter((l) => !mapped.has(l.name.toLowerCase()))
+        .map((l) => {
+            let hue: number | null = null;
+            try {
+                hue = hexToOklchHue(l.color);
+            } catch { /* malformed color — neutral pill */ }
+            return { key: l.name, name: l.name, hue };
+        });
+}
+
+/** The live filter state both views apply (boardUi store shape). */
+export interface IssueFilter {
+    /** Title substring (case-insensitive) OR `#number` / number prefix. */
+    query: string;
+    /** Single active label-name filter, or null. */
+    filterLabel: string | null;
+}
+
+/**
+ * Apply the chrome's live filters to the working set — ONE helper for
+ * Board and List so the two views can never drift. Query matches a
+ * case-insensitive title substring or an issue-number prefix (`#51`,
+ * `51`, `PR #51` all reach #51x); the label filter matches issues
+ * carrying that label name.
+ */
+export function filterIssues(issues: readonly GitHubIssue[], filter: IssueFilter): GitHubIssue[] {
+    const q = filter.query.trim().toLowerCase();
+    const digits = q.startsWith('#') ? q.slice(1) : q;
+    const numeric = /^\d+$/.test(digits) ? digits : null;
+    const label = filter.filterLabel;
+    return issues.filter((issue) => {
+        if (label !== null && !issue.labels.some((l) => eqName(l.name, label))) return false;
+        if (!q) return true;
+        if (numeric !== null && String(issue.number).startsWith(numeric)) return true;
+        return issue.title.toLowerCase().includes(q);
+    });
+}
+
+/**
+ * Card/row order within a column or group: priority ascending (P0 first,
+ * unprioritized last), then number DESCENDING (newest first) — the
+ * prototype's board order.
+ */
+export function sortByPriority(issues: readonly GitHubIssue[], config: BoardConfig): GitHubIssue[] {
+    // Precompute — sort comparators must not rescan labels O(n log n) times.
+    const prio = new Map<number, number>();
+    for (const issue of issues) {
+        prio.set(issue.number, priorityOf(issue, config) ?? 4);
+    }
+    return [...issues].sort(
+        (a, b) => (prio.get(a.number)! - prio.get(b.number)!) || (b.number - a.number)
+    );
+}
+
 /** A milestone as the roadmap/sprint views consume it. */
 export interface BoardCycle {
     /** The milestone number — the issue.milestone join key. */
@@ -210,12 +290,7 @@ export function labelsFor(
     issues: readonly GitHubIssue[],
     config: BoardConfig | null
 ): BoardLabel[] {
-    const mapped = config
-        ? [
-            ...config.statuses.map((s) => s.label),
-            config.priorities.p0, config.priorities.p1, config.priorities.p2, config.priorities.p3
-        ].filter((l): l is string => l !== null).map((l) => l.toLowerCase())
-        : [];
+    const mapped = mappedLabelSet(config);
     // One pass over issues, not one per label — repos can carry hundreds
     // of labels against hundreds of issues.
     const openCounts = new Map<string, number>();
@@ -227,7 +302,7 @@ export function labelsFor(
         }
     }
     return labels
-        .filter((l) => !mapped.includes(l.name.toLowerCase()))
+        .filter((l) => !mapped.has(l.name.toLowerCase()))
         .map((l) => {
             let hue: number | null = null;
             try {
@@ -243,7 +318,7 @@ export function labelsFor(
 }
 
 /** Monogram initials for a login ("good-first" → "GF", "mira" → "MI"). */
-function initialsOf(login: string): string {
+export function initialsOf(login: string): string {
     const parts = login.split(/[-_.]+/).filter(Boolean);
     const raw = parts.length >= 2 ? `${parts[0]![0]}${parts[1]![0]}` : login.slice(0, 2);
     return raw.toUpperCase();

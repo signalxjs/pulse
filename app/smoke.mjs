@@ -247,6 +247,55 @@ try {
     const sidebarText = await page.locator('[data-board-sidebar]').textContent();
     assert(sidebarText.includes('good first issue'), 'sidebar lists the repo tag labels (live boardLabels)');
     assert(sidebarText.includes('mira'), 'sidebar lists the team (live boardPeople)');
+
+    // 5d) Board cards + drag-and-drop (pulse#51). Real cards render into
+    // the columns, priority-sorted; a native HTML5 drag persists through
+    // the moveIssue mutation (fixtures overlay), surviving a reload.
+    await page.waitForSelector('[data-column="todo"] [data-card="511"]', { timeout: 10000 });
+    assert(await page.locator('[data-column="todo"] [data-card]').count() === 4,
+        'the Todo column renders its four cards');
+    const firstTodo = await page.locator('[data-column="todo"] [data-card]').first().getAttribute('data-card');
+    assert(firstTodo === '511', `cards sort P0-first inside the column (top of Todo is #511, got #${firstTodo})`);
+    const card511 = await page.locator('[data-card="511"]').textContent();
+    assert(card511.includes('Sanitize href scheme in Link component'), 'card #511 carries its title');
+    assert(card511.includes('P0') && card511.includes('security') && card511.includes('bug'),
+        'card #511 carries the P0 chip and its tag pills (mapped labels stay hidden)');
+    const backlogCard = await page.locator('[data-column="backlog"] [data-card="503"]').textContent();
+    assert(backlogCard.includes('Support RTL layout in Dialog'), 'backlog renders card #503');
+    // The drag: #513 Todo → In Progress. Playwright performs a real HTML5
+    // drag in Chromium; the optimistic mutate moves the card immediately
+    // and moveIssue persists the label swap on the shared fixtures client.
+    await page.dragAndDrop('[data-card="513"]', '[data-column="inprogress"] [data-drop-list]');
+    await page.waitForSelector('[data-column="inprogress"] [data-card="513"]', { timeout: 10000 });
+    assert(await countOf('todo') === '3' && await countOf('inprogress') === '5',
+        'dragging #513 Todo → In Progress updates both column counts');
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForSelector('[data-column="inprogress"] [data-card="513"]', { timeout: 10000 });
+    assert(await countOf('todo') === '3',
+        'the move PERSISTED: a fresh document still shows #513 in In Progress');
+
+    // 5e) List view (pulse#51): status-grouped rows under sticky headers.
+    await page.goto(`${BASE}/b/lumen/lumen/list`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-list-view]', { timeout: 10000 });
+    assert(await page.locator('[data-list-group]').count() === 5,
+        'the list view renders all five status groups');
+    assert(await page.locator('[data-list-group="todo"] [data-list-row="511"]').count() === 1,
+        'row #511 sits in the Todo group');
+    const headerPos = await page.evaluate(() =>
+        getComputedStyle(document.querySelector('[data-list-group="todo"]').firstElementChild).position);
+    assert(headerPos === 'sticky', `group headers are sticky over bg0 (${headerPos})`);
+
+    // 5f) The live filter narrows BOTH views (query matches title or
+    // #number; shared helper — asserted per-view here).
+    await page.fill('[data-board-header] input', '#503');
+    await page.waitForFunction(() => document.querySelectorAll('[data-list-row]').length === 1, { timeout: 10000 });
+    assert(await page.locator('[data-list-row="503"]').count() === 1, 'query "#503" narrows the list to that row');
+    await page.click('[data-board-sidebar] a[href="/b/lumen/lumen"]');
+    await page.waitForSelector('[data-column="backlog"] [data-card="503"]', { timeout: 10000 });
+    assert(await page.locator('[data-card]').count() === 1, 'the query carries into the board view (one card)');
+    await page.fill('[data-board-header] input', '');
+    await page.waitForFunction(() => document.querySelectorAll('[data-card]').length > 1, { timeout: 10000 });
+
     // Setup revisited WITH a config: no redirect away, prefilled from it.
     await page.goto(`${BASE}/b/lumen/lumen/setup`, { waitUntil: 'load' });
     await page.waitForSelector('[data-status-select="done"]', { timeout: 10000 });
