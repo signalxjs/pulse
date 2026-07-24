@@ -133,10 +133,12 @@ try {
 
     // 3) The dashboard renders REAL data (fixtures = recorded signalxjs org).
     await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });
-    const cards = await page.locator('[data-repo-grid] .card').count();
+    // Repo cards are router Links into the board (Link doesn't forward
+    // data-* attributes, so target the href shape).
+    const cards = await page.locator('[data-repo-grid] a[href^="/b/"]').count();
     assert(cards >= 10, `repo grid shows the recorded repos (${cards})`);
-    assert(await page.locator('.navbar').textContent().then((t) => t.includes('pulse-dev')),
-        'navbar shows the signed-in user');
+    assert(await page.locator('[data-app-header]').textContent().then((t) => t.includes('pulse-dev')),
+        'app header shows the signed-in user');
 
     // 4) SSR-first-paint: a fresh signed-in document CONTAINS the data — no
     // client fetch needed for first render (useData SSR transfer).
@@ -149,18 +151,30 @@ try {
     assert(ssrDoc.includes('core') && ssrDoc.includes('open issues'), 'repo data is SSR-rendered into the document');
     assert(ssrDoc.includes('store:session'), 'session store slice transfers in the SSR blob');
 
-    // 4b) Anti-FOUC (pulse#14): the signed-in document is themed BEFORE first
-    // paint. @sigx/daisyui's ThemeProvider only sets data-theme client-side
-    // (during hydration), so without a pre-paint theme the browser flashes the
-    // unthemed default (white) for a frame before the dark theme snaps in —
-    // most visibly right after sign-in, which is a full-page load. Guard both
-    // halves of the fix: a data-theme on <html> (no-JS fallback) AND a blocking
-    // head script that resolves the theme ahead of <body>.
-    assert(/<html[^>]*\sdata-theme=/.test(ssrDoc),
-        'the signed-in document ships a data-theme on <html> (never paints unthemed)');
-    const themeScriptAt = ssrDoc.indexOf('daisy-theme');
-    assert(themeScriptAt !== -1 && themeScriptAt < ssrDoc.indexOf('<body'),
-        'a blocking pre-paint theme script runs in <head>, before <body>');
+    // 4b) Anti-FOUC (pulse#14 → pulse#39): Pulse is dark-only now, so the
+    // pre-paint theming is one static inline background on <html> — no
+    // daisyUI theme-resolution script may remain in the document.
+    assert(/<html[^>]*style="[^"]*background:\s*#0c0d11/.test(ssrDoc),
+        'the document ships the static dark background inline on <html> (never paints unthemed)');
+    assert(!ssrDoc.includes('daisy-theme') && !ssrDoc.includes('data-theme'),
+        'the daisyUI FOUC script and data-theme are gone (daisyUI retired)');
+
+    // 4c) Board route (pulse#39): the signed-in planner shell SSRs with the
+    // chrome, and the lazy route chunk is preloaded in the document head.
+    const boardDoc = await fetch(`${BASE}/b/lumen/lumen`, {
+        headers: { 'user-agent': UA, cookie: `pulse_sid=${encodeURIComponent(sid.value)}` }
+    }).then((r) => r.text());
+    assert(boardDoc.includes('data-board-root') && boardDoc.includes('data-board-sidebar'),
+        'the board route SSRs the planner chrome (root + sidebar)');
+    assert(boardDoc.includes('lumen/lumen') && boardDoc.includes('Planning workspace'),
+        'board chrome carries the repo breadcrumb and brand');
+    assert(/rel="modulepreload"[^>]*BoardPage/.test(boardDoc) || /BoardPage[^>]*rel="modulepreload"/.test(boardDoc),
+        'the lazy BoardPage chunk is modulepreloaded in the board document (collectAssets wiring)');
+    const badView = await fetch(`${BASE}/b/lumen/lumen/not-a-view`, {
+        redirect: 'manual',
+        headers: { 'user-agent': UA, cookie: `pulse_sid=${encodeURIComponent(sid.value)}` }
+    });
+    assert(badView.status === 404, 'an invalid :view answers a REAL 404');
 
     // 5) Client-side nav: /login → / through a real Link, URL changes with
     // ZERO document requests.
@@ -179,6 +193,24 @@ try {
     // The dashboard's data on a CLIENT-SIDE nav comes through the server-fn
     // stubs — the typed fetch swap the client build performs (pulse#34).
     assert(fnRequests >= 1, `client-side nav fetches data through the server-fn stubs (${fnRequests} calls)`);
+
+    // 5b) Repo card → board: a real Link into the LAZY route, still zero
+    // document requests (the chunk arrives as a script), and the design
+    // tokens are actually applied (computed colors, not just class names).
+    await page.click('[data-repo-grid] a[href^="/b/"]');
+    await page.waitForSelector('[data-board-root]', { timeout: 10000 });
+    assert(page.url().includes('/b/'), `repo card links into the board route (${page.url()})`);
+    assert(docRequests === 0, 'the lazy board route loads client-side (0 document requests)');
+    const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    assert(bodyBg === 'rgb(12, 13, 17)', `body paints bg0 (${bodyBg})`);
+    const asideBg = await page.evaluate(() =>
+        getComputedStyle(document.querySelector('[data-board-sidebar]')).backgroundColor);
+    assert(asideBg === 'rgb(16, 17, 22)', `sidebar paints bg1 (${asideBg})`);
+    const sansFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+    assert(sansFont.includes('Hanken Grotesk'), `body uses the handoff UI font (${sansFont})`);
+    // Back to the dashboard for the sign-out flow below.
+    await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });
 
     // 6) Sign out round-trip.
     await page.waitForSelector('text=Sign out', { timeout: 10000 });

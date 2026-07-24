@@ -1,4 +1,154 @@
+/*
+ * Pulse design system — the handoff tokens as a Tailwind 4 theme.
+ * (design_handoff_pulse_planner: dark-only, dense, Hanken Grotesk +
+ * JetBrains Mono.) daisyUI is retired (pulse#39); every surface styles
+ * itself from these tokens via plain utilities: bg-bg1, text-tm,
+ * border-bd, font-mono, …
+ */
 @import 'tailwindcss';
-@plugin "daisyui" {
-    themes: all;
+
+/* Self-hosted variable fonts (hashed assets through Vite). */
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource-variable/jetbrains-mono';
+
+@theme {
+    /* Surfaces */
+    --color-bg0: #0c0d11; /* app background */
+    --color-bg1: #101116; /* sidebar, panels, drop-zones */
+    --color-bg2: #16181f; /* cards, inputs, tiles */
+    --color-bg3: #1c1f28; /* hover surface, toast */
+    /* Borders */
+    --color-bd: #23262f; /* default borders/hairlines */
+    --color-bds: #2f333e; /* hover/emphasis borders */
+    /* Text */
+    --color-tx: #e7e8ee; /* primary */
+    --color-tm: #9499a7; /* secondary */
+    --color-tf: #5f6472; /* faint / icons / mono meta */
+    /* Typography */
+    --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+    /* Animations */
+    --animate-pulse-dot: pulseDot 1.8s ease-in-out infinite;
+    --animate-pulse-dot-slow: pulseDot 2s ease-in-out infinite;
+    --animate-fade-in: fadeIn 0.15s ease;
+    --animate-pop-in: popIn 0.16s ease;
+    --animate-slide-over: slideOver 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+    --animate-toast-in: toastIn 0.18s ease;
+
+    @keyframes pulseDot {
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.3;
+            transform: scale(0.62);
+        }
+    }
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes popIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.985);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @keyframes slideOver {
+        from {
+            transform: translateX(28px);
+            opacity: 0;
+        }
+        to {
+            transform: none;
+            opacity: 1;
+        }
+    }
+    @keyframes toastIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+}
+
+/*
+ * Accents live OUTSIDE @theme values so they stay runtime-tunable: the
+ * board root overrides --ac inline from the store's accentHue and every
+ * accent utility follows, because `@theme inline` makes utilities embed
+ * var(--ac) at the point of use (a static @theme value would freeze the
+ * substitution at :root — inline overrides would never reach it).
+ */
+:root {
+    --ac: oklch(0.64 0.16 285); /* accent (violet; user-tunable hue) */
+    --ac2: oklch(0.72 0.11 210); /* secondary accent (links, gradients) */
+}
+@theme inline {
+    --color-ac: var(--ac);
+    --color-ac2: var(--ac2);
+}
+
+@layer base {
+    html,
+    body {
+        height: 100%;
+        background: var(--color-bg0);
+        color: var(--color-tx);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+    }
+    a {
+        color: var(--ac2);
+    }
+    a:hover {
+        color: oklch(0.8 0.11 210);
+    }
+    /* 10px scrollbars, thumb-only (handoff §Spacing/radius/shadow). */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #23262f;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #2f333e;
+        background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+}
+
+/*
+ * Density (boardUi.density) — the board root carries data-density and these
+ * vars swap the metrics the handoff defines per mode: base font 14/13px,
+ * row height 40/34px, card padding 10px 12px / 7px 10px.
+ */
+[data-density='cozy'] {
+    --rowh: 40px;
+    --cardpad: 10px 12px;
+    font-size: 14px;
+}
+[data-density='compact'] {
+    --rowh: 34px;
+    --cardpad: 7px 10px;
+    font-size: 13px;
 }
