@@ -11,6 +11,8 @@ type ToastProps = Define.Prop<'message', string, true>;
 export const Toast = component<ToastProps>(({ props }) => () => (
     <div
         data-toast
+        role="status"
+        aria-live="polite"
         class={
             'fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 animate-toast-in items-center gap-2 ' +
             'rounded-[10px] border border-bds bg-bg3 px-3.5 py-2.5 text-[12.5px] text-tx ' +

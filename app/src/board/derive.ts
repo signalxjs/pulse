@@ -127,9 +127,9 @@ export interface IssueFilter {
 /**
  * Apply the chrome's live filters to the working set — ONE helper for
  * Board and List so the two views can never drift. Query matches a
- * case-insensitive title substring or an issue-number prefix (`#51`,
- * `51`, `PR #51` all reach #51x); the label filter matches issues
- * carrying that label name.
+ * case-insensitive title substring or an issue-number prefix (`#51` and
+ * `51` both reach #51x; anything else falls back to the title search);
+ * the label filter matches issues carrying that label name.
  */
 export function filterIssues(issues: readonly GitHubIssue[], filter: IssueFilter): GitHubIssue[] {
     const q = filter.query.trim().toLowerCase();
