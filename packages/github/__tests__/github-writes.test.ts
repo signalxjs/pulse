@@ -128,7 +128,7 @@ describe('createLiveClient — send() wire behavior', () => {
         // Even though the first response carried an etag, the second write
         // must not send a validator — writes bypass the cache entirely.
         expect(calls[1]!.headers['if-none-match']).toBeUndefined();
-        expect(cache.get('https://api.github.com/repos/o/r/issues')).toBeUndefined();
+        expect(await cache.get('https://api.github.com/repos/o/r/issues')).toBeUndefined();
     });
 
     it('folds 422 errors[] field details into the GitHubApiError message', async () => {
