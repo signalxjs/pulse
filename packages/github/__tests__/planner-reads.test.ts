@@ -66,12 +66,15 @@ describe('createLiveClient — repoIssues paging', () => {
         expect(calls[0]!.url).toContain('per_page=100');
     });
 
-    it('treats a malformed next-URL (no numeric page param) as the last page', async () => {
+    it.each([
+        ['no numeric page param', '<https://api.github.com/repos/o/r/issues?cursor=abc>; rel="next"'],
+        ['unparseable next URL', '<not a url at all>; rel="next"']
+    ])('treats a malformed next-URL (%s) as the last page', async (_name, link) => {
         const { stub } = fetchStub([{
             status: 200,
             body: [RAW_ISSUE],
             etag: 'W/"p1"',
-            headers: { link: '<https://api.github.com/repos/o/r/issues?cursor=abc>; rel="next"' }
+            headers: { link }
         }]);
         const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
         const page = await gh.repoIssues('o', 'r');
