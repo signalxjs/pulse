@@ -180,14 +180,19 @@ export function createLiveClient(options) {
     async function listAll(pathWithQuery) {
         /** @type {any[]} */
         const items = [];
+        /** @type {number | null} */
         let page = 1;
-        for (let hops = 0; hops < 10; hops++) {
+        for (let hops = 0; hops < 10 && page !== null; hops++) {
             const suffix = page > 1 ? `&page=${page}` : '';
             const envelope = await cachedGetPage(`${pathWithQuery}${suffix}`);
-            if (!envelope) break;
+            if (!envelope) return items;
             items.push(...envelope.items);
-            if (envelope.nextPage === null) break;
             page = envelope.nextPage;
+        }
+        if (page !== null) {
+            // Deliberately partial rather than failing the whole render: a
+            // signal for debugging, not an error a board view must handle.
+            console.warn(`[github] listing truncated at ${items.length} items (10-page cap): ${pathWithQuery}`);
         }
         return items;
     }
