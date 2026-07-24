@@ -13,6 +13,11 @@
  * @returns {import('./index.js').EtagCache}
  */
 export function createDbEtagCache(db) {
+    if (!db) {
+        // Fail at construction with a named cause, not as a baffling
+        // TypeError on the first cache read.
+        throw new Error('createDbEtagCache: a PulseDb is required (create one with @pulse/db)');
+    }
     return {
         async get(key) {
             return /** @type {any} */ (await db.first('SELECT etag, body FROM etag_cache WHERE url = ?', key));

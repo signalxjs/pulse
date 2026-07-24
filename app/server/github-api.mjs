@@ -10,6 +10,9 @@ import { createLiveClient, createDbEtagCache } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
 
 export function createGitHubApi({ db, getSession, fixtures } = {}) {
+    if (!fixtures && !db) {
+        throw new Error('createGitHubApi: a db is required in live mode (the ETag cache persists there)');
+    }
     // Fixtures mode never talks to GitHub — no ETag cache to keep. The db
     // arrives migrated (server.mjs applies app/migrations before serving).
     const etagCache = fixtures ? null : createDbEtagCache(db);
