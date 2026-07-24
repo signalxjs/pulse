@@ -135,6 +135,51 @@ the app runs, but the ecosystem again can't follow a core release without a
 daisyui alignment bump (same lockstep-release gap as F1). Pulse holds
 daisyui at 0.8.0 until a 0.12-compatible release ships.
 
+### F13 — serverFn platform adoption: ambient SSR context held in both modes (R4 · validated, no issue)
+The risk-gate question of pulse#34 — does an in-process SSR call resolve
+`rq.request` from the ambient scope the document handlers open (rfc-server
+§7, core#309) — answers YES in BOTH modes, first try, no fallback needed:
+
+- **Dev** (`node server.mjs`, Vite middleware + `createDevRequestHandler`):
+  PAT sign-in → `GET /` with the cookie SSR-renders the fixture repo names
+  into the document — `withAuth` read the session cookie off `rq.request`
+  during the in-process `viewerRepos()`/`viewerOrgs()` calls. The seam
+  crosses the module-runner/Node graph split because both halves ride
+  `globalThis` (`__SIGX_SERVERFN_SCOPE__` / `__SIGX_SERVERFN_CONTEXT__`),
+  and `sigxServer()` eagerly `ssrLoadModule`s `@sigx/server/node` at
+  startup, so the scope is stamped before the first render.
+- **Prod** (`vite build --app` + `--conditions production`): same probe,
+  same result — `createRequestHandler` opens the scope around the whole
+  render, `createServerFnHandler` mounts beside it.
+
+DX notes from the adoption:
+- The whole client-side wiring is ZERO config: no `serverPlugin`, no
+  transport setup — stubs default to same-origin `/_sigx/fn`, and
+  `useData(fn)` keys the cell on the build-stamped stable id, so the SSR
+  transfer joins on hydration exactly like the string-keyed form did.
+  Replacing the hand-built PulseApi injectable (+ fetch wrapper + Express
+  proxy, ~160 lines) with two `serverFn` declarations is the trade the RFC
+  promised.
+- Registry wiring in prod is two lines: import
+  `dist/server/sigx-server-fns.js`, pass its `serverFns` to
+  `createServerFnHandler({ functions })`. The chunk is emitted by
+  `sigxServer()` with dual keys (content-hashed + stable
+  `pulse-app/src/server/repos.server.ts#<name>`); the smoke probes the
+  STABLE symbol so it never chases content hashes. Dev needs no mount at
+  all — `vite.middlewares` carries the endpoint.
+- `ServerFnError(401)` passes the wire verbatim; a thrown `GitHubApiError`
+  is masked to the generic 500 envelope in production, as specified — the
+  proxy's per-status error mapping (429 rate-limit etc.) is GONE with the
+  proxy, so surfacing rate-limit specifics to the client now needs an
+  explicit rethrow as `ServerFnError` (fine; deliberate channel).
+- Minor bridge: `@pulse/auth`'s `getSession` is structural over
+  `{ headers: { cookie } }`, while `rq.request.headers` is a WinterCG
+  `Headers` — one `headers.get('cookie')` adapter line in `withAuth`.
+- One semantic change to hold: the old proxy's tokenless fallback
+  (fixtures / `GITHUB_TOKEN` env) served unauthenticated requests; the
+  `withAuth` chain requires a session on every transport, so the smoke's
+  "tokenless API" assertion became "unauthenticated fn call answers 401".
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first

@@ -15,6 +15,7 @@
         "@sigx/reactivity": "catalog:",
         "@sigx/runtime-core": "catalog:",
         "@sigx/runtime-dom": "catalog:",
+        "@sigx/server": "catalog:",
         "@sigx/server-renderer": "catalog:",
         "@sigx/cache": "catalog:",
         "@sigx/router": "^0.10.0",
@@ -23,6 +24,7 @@
         "daisyui": "^5.5.14",
         "tailwindcss": "^4.2.4",
         "express": "^5.2.1",
+        "valibot": "^1.4.2",
         "@pulse/github": "workspace:*",
         "@pulse/auth": "workspace:*",
         "@pulse/db": "workspace:*"

@@ -1,7 +1,8 @@
 // The Pulse server — plain Node, no transpiler: dev is Vite middleware +
-// one SSR handler, prod is static assets + one handler (the reference
-// pattern from sigx core's rfc-ssr-platform §3.3). Run production with
-// `--conditions production` for the NODE_ENV-stripped dists.
+// one SSR handler, prod is static assets + the server-fn endpoint + one
+// handler (the reference pattern from sigx core's rfc-ssr-platform §3.3).
+// Run production with `--conditions production` for the NODE_ENV-stripped
+// dists.
 import express from 'express';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -9,7 +10,8 @@ import { readFile } from 'node:fs/promises';
 import { createSessionStore, createAuthRouter, getSession } from '@pulse/auth';
 import { createSqliteDb } from '@pulse/db/sqlite';
 import { applyMigrations } from '@pulse/db/migrate';
-import { createGitHubApi } from './server/github-api.mjs';
+import { createLiveClient, createDbEtagCache } from '@pulse/github';
+import { createFixturesClient } from '@pulse/github/fixtures';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -52,35 +54,30 @@ async function createServer() {
     // is live PAT-only — a real user's PAT must reach real GitHub, never be
     // silently swallowed by fixtures. CI smokes set PULSE_FIXTURES=1.
     const fixtures = process.env.PULSE_FIXTURES === '1';
-    const { api, clientFor, makeClient } = createGitHubApi({
-        db,
-        fixtures,
-        getSession: (req) => getSession(req, sessions, secret)
-    });
+    // Fixtures mode never talks to GitHub — no ETag cache to keep; ONE
+    // shared fixtures client serves every session. Live mode mints a client
+    // per token over the shared cache.
+    const etagCache = fixtures ? null : createDbEtagCache(db);
+    const fixturesClient = fixtures ? createFixturesClient() : null;
+    const makeGitHubClient = (token) => fixtures
+        ? fixturesClient
+        : createLiveClient({ token, etagCache });
 
-    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient, oauth, secureCookies }));
-    app.use('/api/github', api);
+    // The service registry server functions reach for at request time
+    // (src/server/services.server.ts is the typed accessor). Set BEFORE any
+    // request is served — the `use:` chain (withAuth) reads it per call.
+    globalThis.__PULSE_SERVER__ = { sessions, etagCache, makeGitHubClient, fixtures, secret };
+
+    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies }));
     console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
 
-    // Per-request SSR context: the signed-in user + a PulseApi over the
-    // request's GitHub client (session token > env fallback). When
-    // clientFor() is null (live setup, unauthenticated), /api/github
-    // answers 401 and the SSR entry provides NO PulseApi — the auth guard
-    // redirects before any page could reach for it.
-    const requestCtx = async (req) => {
-        const user = (await getSession(req, sessions, secret))?.user ?? null;
-        const gh = await clientFor(req);
-        return {
-            user,
-            api: gh && {
-                viewer: () => gh.viewer(),
-                viewerOrgs: () => gh.viewerOrgs(),
-                viewerRepos: () => gh.viewerRepos(),
-                ownerRepos: (owner) => gh.ownerRepos(owner),
-                repo: (owner, name) => gh.repo(owner, name)
-            }
-        };
-    };
+    // Per-request SSR context: the signed-in user, for the auth guard.
+    // Page DATA travels through server functions instead — they resolve
+    // this request from the ambient scope the document handlers open
+    // (rfc-server §7), so nothing data-shaped needs threading here.
+    const requestCtx = async (req) => ({
+        user: (await getSession(req, sessions, secret))?.user ?? null
+    });
 
     if (!isProd) {
         const { createServer: createViteServer } = await import('vite');
@@ -91,6 +88,8 @@ async function createServer() {
             server: { middlewareMode: true },
             appType: 'custom'
         });
+        // vite.middlewares carries the dev /_sigx/fn endpoint — sigxServer()'s
+        // configureServer middleware (symbols resolve via ssrLoadModule).
         app.use(vite.middlewares);
         const handler = await createDevRequestHandler(vite, {
             entry: '/src/entry-server.tsx',
@@ -111,6 +110,7 @@ async function createServer() {
         });
     } else {
         const { createRequestHandler } = await import('@sigx/server-renderer/node');
+        const { createServerFnHandler } = await import('@sigx/server/node');
         const { collectAssets } = await import('@sigx/vite/ssr');
 
         const clientDir = resolve(__dirname, 'dist/client');
@@ -121,13 +121,21 @@ async function createServer() {
         const { createApp } = await import(
             pathToFileURL(resolve(__dirname, 'dist/server/entry-server.js')).href
         );
+        // The build-emitted fn registry (symbol → lazy import) — passed
+        // EXPLICITLY, never ambient (the resume-manifest posture).
+        const { serverFns } = await import(
+            pathToFileURL(resolve(__dirname, 'dist/server/sigx-server-fns.js')).href
+        );
 
         app.use(express.static(clientDir, { index: false }));
+        // The server-function endpoint answers POST /_sigx/fn/<symbol>;
+        // everything else falls through to the document handler.
+        app.use(createServerFnHandler({ functions: serverFns }));
         app.use(createRequestHandler({
             template,
             // The factory's second parameter is this request's context
-            // ({ user, api }) — prod passes it directly (router-SSR
-            // contract §1 allows extra factory parameters).
+            // ({ user }) — prod passes it directly (router-SSR contract §1
+            // allows extra factory parameters).
             app: async (url, req) => createApp(url, await requestCtx(req)),
             isBot,
             document: {
