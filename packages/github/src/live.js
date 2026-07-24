@@ -7,6 +7,7 @@
  * what lets Pulse browse comfortably inside the 5000/h authenticated
  * budget.
  */
+import { clampPaging } from './paging.js';
 
 /** Error carrying the GitHub status; `rateLimited` marks 403/429 budget exhaustion. */
 export class GitHubApiError extends Error {
@@ -277,12 +278,13 @@ export function createLiveClient(options) {
         },
 
         async repoIssues(owner, name, opts = {}) {
+            const paging = clampPaging(opts.page, opts.perPage);
             const params = new URLSearchParams({
                 state: opts.state ?? 'all',
                 sort: 'updated',
-                per_page: String(opts.perPage ?? 100)
+                per_page: String(paging.perPage)
             });
-            if (opts.page) params.set('page', String(opts.page));
+            if (paging.page > 1) params.set('page', String(paging.page));
             if (opts.labels) params.set('labels', opts.labels);
             if (opts.milestone !== undefined) params.set('milestone', String(opts.milestone));
             if (opts.since) params.set('since', opts.since);

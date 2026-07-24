@@ -81,6 +81,19 @@ describe('createLiveClient — repoIssues paging', () => {
         expect(page.nextPage).toBeNull();
     });
 
+    it('clamps out-of-contract paging options before they reach the query', async () => {
+        const { stub, calls } = fetchStub([
+            { status: 200, body: [], etag: '"a"' },
+            { status: 200, body: [], etag: '"b"' }
+        ]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        await gh.repoIssues('o', 'r', { perPage: 500 });
+        expect(calls[0]!.url).toContain('per_page=100');
+        await gh.repoIssues('o', 'r', { page: 0, perPage: 0 });
+        expect(calls[1]!.url).toContain('per_page=1');
+        expect(calls[1]!.url).not.toContain('page=0');
+    });
+
     it('passes state/page/labels/milestone/since through to the query', async () => {
         const { stub, calls } = fetchStub([{ status: 200, body: [], etag: '"x"' }]);
         const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
