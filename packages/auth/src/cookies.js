@@ -1,35 +1,62 @@
 /**
- * Signed-cookie helpers — HMAC-SHA256 over the value, base64url, constant
- * time verification. HttpOnly + SameSite=Lax always; Secure outside dev.
+ * Signed-cookie helpers — HMAC-SHA256 over the value via WebCrypto
+ * (`crypto.subtle`), base64url signature, constant-time verification
+ * through `subtle.verify`. Wire format: `<value>.<base64url mac>`.
+ * The HMAC key is HKDF-derived from the secret (info 'pulse-cookie-hmac')
+ * and cached per secret. HttpOnly + SameSite=Lax always; Secure is the
+ * caller's decision (`secure` option) — no env sniffing in this package.
  */
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { deriveKey, toBase64Url, fromBase64Url } from './crypto.js';
 
 export const SESSION_COOKIE = 'pulse_sid';
 export const STATE_COOKIE = 'pulse_oauth';
 
+const enc = new TextEncoder();
+
+/** @type {Map<string, Promise<CryptoKey>>} */
+const hmacKeys = new Map();
+
+/** @param {string} secret */
+function hmacKey(secret) {
+    let key = hmacKeys.get(secret);
+    if (!key) {
+        key = deriveKey(secret, 'pulse-cookie-hmac', { name: 'HMAC', hash: 'SHA-256', length: 256 }, ['sign', 'verify']);
+        hmacKeys.set(secret, key);
+    }
+    return key;
+}
+
 /**
  * @param {string} value
  * @param {string} secret
+ * @returns {Promise<string>}
  */
-export function sign(value, secret) {
-    const mac = createHmac('sha256', secret).update(value).digest('base64url');
-    return `${value}.${mac}`;
+export async function sign(value, secret) {
+    const mac = await crypto.subtle.sign('HMAC', await hmacKey(secret), enc.encode(value));
+    return `${value}.${toBase64Url(new Uint8Array(mac))}`;
 }
 
 /**
  * @param {string | undefined} signed
  * @param {string} secret
- * @returns {string | null}
+ * @returns {Promise<string | null>}
  */
-export function verify(signed, secret) {
+export async function verify(signed, secret) {
     if (!signed) return null;
     const dot = signed.lastIndexOf('.');
     if (dot <= 0) return null;
     const value = signed.slice(0, dot);
-    const mac = Buffer.from(signed.slice(dot + 1));
-    const expected = Buffer.from(createHmac('sha256', secret).update(value).digest('base64url'));
-    if (mac.length !== expected.length || !timingSafeEqual(mac, expected)) return null;
-    return value;
+    let mac;
+    try {
+        mac = fromBase64Url(signed.slice(dot + 1));
+    } catch {
+        // Malformed base64 = no signature, never a 500.
+        return null;
+    }
+    // subtle.verify is the spec's constant-time comparison — never compare
+    // MACs with === (and Cloudflare's subtle.timingSafeEqual is non-standard).
+    const ok = await crypto.subtle.verify('HMAC', await hmacKey(secret), mac, enc.encode(value));
+    return ok ? value : null;
 }
 
 /**
@@ -57,15 +84,14 @@ export function readCookie(req, name) {
 /**
  * @param {string} name
  * @param {string} value
- * @param {{ maxAge?: number, clear?: boolean }} [opts]
+ * @param {{ maxAge?: number, clear?: boolean, secure?: boolean }} [opts]
  */
 export function cookieHeader(name, value, opts = {}) {
-    // Secure in production — except when explicitly opted out for plain-http
-    // localhost (CI smokes, local prod testing): a Secure cookie over http
-    // is silently dropped by every client.
-    const secure = process.env.NODE_ENV === 'production' && process.env.PULSE_INSECURE_COOKIES !== '1'
-        ? '; Secure'
-        : '';
+    // Secure is the caller's decision (server.mjs computes it from its
+    // environment): a Secure cookie over plain http is silently dropped by
+    // every client, so plain-http localhost (CI smokes, local prod
+    // testing) must be able to opt out.
+    const secure = opts.secure ? '; Secure' : '';
     const maxAge = opts.clear ? 0 : (opts.maxAge ?? 60 * 60 * 24 * 30);
     return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${maxAge}`;
 }

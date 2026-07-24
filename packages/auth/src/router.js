@@ -9,7 +9,6 @@
  * - POST /logout    → destroy session, clear cookie.
  */
 import express from 'express';
-import { randomUUID } from 'node:crypto';
 import { sign, verify, readCookie, cookieHeader, SESSION_COOKIE, STATE_COOKIE } from './cookies.js';
 
 const GITHUB_AUTHORIZE = 'https://github.com/login/oauth/authorize';
@@ -61,7 +60,7 @@ function sameOrigin(req) {
  * @returns {import('express').Router}
  */
 export function createAuthRouter(options) {
-    const { sessions, secret, fixtures, makeClient, oauth } = options;
+    const { sessions, secret, fixtures, makeClient, oauth, secureCookies = false } = options;
     if (!secret) throw new Error('createAuthRouter: a secret is required — an empty secret makes cookies forgeable');
     if (!sessions) throw new Error('createAuthRouter: a SessionStore is required');
     if (typeof makeClient !== 'function') throw new Error('createAuthRouter: makeClient(token) is required');
@@ -70,19 +69,25 @@ export function createAuthRouter(options) {
     // /pat carries one small token — no reason to accept large bodies.
     router.use(express.json({ limit: '4kb' }));
 
+    /** Per-router shorthand: cookieHeader with this router's Secure policy. */
+    /** @type {typeof cookieHeader} */
+    const setCookie = (name, value, opts = {}) => cookieHeader(name, value, { ...opts, secure: secureCookies });
+
     /** @param {import('express').Response} res @param {string} sid */
-    function setSessionCookie(res, sid) {
-        res.append('set-cookie', cookieHeader(SESSION_COOKIE, sign(sid, secret)));
+    async function setSessionCookie(res, sid) {
+        res.append('set-cookie', setCookie(SESSION_COOKIE, await sign(sid, secret)));
     }
 
-    router.get('/login', (req, res) => {
+    // Async handlers throughout: express 5 forwards rejections to the
+    // error-handling middleware.
+    router.get('/login', async (req, res) => {
         const returnTo = safeReturnTo(req.query.returnTo);
         if (!oauth) {
             res.redirect(303, `/login?pat=1&returnTo=${encodeURIComponent(returnTo)}`);
             return;
         }
-        const state = randomUUID();
-        res.append('set-cookie', cookieHeader(STATE_COOKIE, sign(`${state}:${returnTo}`, secret), { maxAge: 600 }));
+        const state = crypto.randomUUID();
+        res.append('set-cookie', setCookie(STATE_COOKIE, await sign(`${state}:${returnTo}`, secret), { maxAge: 600 }));
         const url = new URL(GITHUB_AUTHORIZE);
         url.searchParams.set('client_id', oauth.clientId);
         url.searchParams.set('scope', 'repo read:org');
@@ -96,19 +101,19 @@ export function createAuthRouter(options) {
                 res.status(404).json({ error: 'OAuth is not configured' });
                 return;
             }
-            const staged = verify(readCookie(req, STATE_COOKIE), secret);
+            const staged = await verify(readCookie(req, STATE_COOKIE), secret);
             const [state, ...rest] = (staged ?? '').split(':');
             const returnTo = safeReturnTo(rest.join(':'));
             if (!state || req.query.state !== state) {
                 // A mismatched state is spent — clear it so a retry starts
                 // from a freshly issued state cookie, never a replay.
-                res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
+                res.append('set-cookie', setCookie(STATE_COOKIE, '', { clear: true }));
                 res.status(403).json({ error: 'OAuth state mismatch' });
                 return;
             }
             // The state is SPENT the moment it validates — a later failure
             // (missing code, exchange error) must not leave it replayable.
-            res.append('set-cookie', cookieHeader(STATE_COOKIE, '', { clear: true }));
+            res.append('set-cookie', setCookie(STATE_COOKIE, '', { clear: true }));
             if (typeof req.query.code !== 'string' || !req.query.code) {
                 res.status(400).json({ error: 'missing OAuth code' });
                 return;
@@ -135,7 +140,7 @@ export function createAuthRouter(options) {
             const storedToken = fixtures ? 'fixtures' : payload.access_token;
             const user = await makeClient(storedToken).viewer();
             const sid = await sessions.create(user, storedToken);
-            setSessionCookie(res, sid);
+            await setSessionCookie(res, sid);
             res.redirect(303, returnTo);
         } catch (err) {
             console.error('[pulse] OAuth callback failed:', err);
@@ -159,7 +164,7 @@ export function createAuthRouter(options) {
             const client = makeClient(fixtures ? 'fixtures' : token);
             const user = await client.viewer();
             const sid = await sessions.create(user, fixtures ? 'fixtures' : token);
-            setSessionCookie(res, sid);
+            await setSessionCookie(res, sid);
             res.json({ ok: true, user });
         } catch (err) {
             const status = /** @type {any} */ (err)?.status === 401 ? 401 : 502;
@@ -172,9 +177,9 @@ export function createAuthRouter(options) {
             res.status(403).json({ error: 'cross-origin logout rejected' });
             return;
         }
-        const sid = verify(readCookie(req, SESSION_COOKIE), secret);
+        const sid = await verify(readCookie(req, SESSION_COOKIE), secret);
         if (sid) await sessions.destroy(sid);
-        res.append('set-cookie', cookieHeader(SESSION_COOKIE, '', { clear: true }));
+        res.append('set-cookie', setCookie(SESSION_COOKIE, '', { clear: true }));
         res.json({ ok: true });
     });
 
@@ -189,6 +194,6 @@ export function createAuthRouter(options) {
  */
 export async function getSession(req, sessions, secret) {
     if (!secret) throw new Error('getSession: a secret is required — an empty secret makes cookies forgeable');
-    const sid = verify(readCookie(req, SESSION_COOKIE), secret);
+    const sid = await verify(readCookie(req, SESSION_COOKIE), secret);
     return sid ? sessions.get(sid) : null;
 }

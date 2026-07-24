@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createSessionStore, getSession } from '@pulse/auth';
 import { createSqliteDb } from '@pulse/db/sqlite';
 import { applyMigrations } from '@pulse/db/migrate';
@@ -42,6 +43,11 @@ describe('session store', () => {
         const row = raw.prepare('SELECT token_enc FROM sessions WHERE sid = ?').get(sid) as { token_enc: string };
         expect(row.token_enc).not.toContain('ghp_supersecret');
         expect(row.token_enc.length).toBeGreaterThan(20);
+        // Documented blob format: base64(iv) '.' base64(ciphertext‖tag) —
+        // 12-byte IV, tag adds 16 bytes over the plaintext.
+        const [ivB64, ctB64] = row.token_enc.split('.');
+        expect(Buffer.from(ivB64!, 'base64').length).toBe(12);
+        expect(Buffer.from(ctB64!, 'base64').length).toBe('ghp_supersecret'.length + 16);
         raw.close();
     });
 
@@ -79,6 +85,18 @@ describe('session store', () => {
         const sid = await first.create(USER, 'tok');
         const rotated = createSessionStore({ db, secret: 'new' });
         expect(await rotated.get(sid)).toBeNull();
+        // The dead row is dropped — signing in again starts clean.
+        expect(await first.get(sid)).toBeNull();
+    });
+
+    it('a malformed token blob (e.g. a pre-WebCrypto row) reads as signed-out and drops the row', async () => {
+        const db = await migratedDb();
+        const sessions = createSessionStore({ db, secret: 's3cret' });
+        const sid = await sessions.create(USER, 'tok');
+        // Old scrypt-era blobs were a single base64 string with no '.'.
+        await db.run('UPDATE sessions SET token_enc = ? WHERE sid = ?', 'bm90LWEtcmVhbC1ibG9i', sid);
+        expect(await sessions.get(sid)).toBeNull();
+        expect(await db.first('SELECT sid FROM sessions WHERE sid = ?', sid)).toBeFalsy();
     });
 
     it('requires a secret', async () => {
@@ -92,13 +110,16 @@ describe('session store', () => {
 });
 
 describe('signed cookies', () => {
-    it('verify() accepts its own signature and rejects tampering', () => {
-        const signed = sign('abc-123', 'k');
-        expect(verify(signed, 'k')).toBe('abc-123');
-        expect(verify(signed + 'x', 'k')).toBeNull();
-        expect(verify('abc-124.' + signed.split('.')[1], 'k')).toBeNull();
-        expect(verify(signed, 'other-key')).toBeNull();
-        expect(verify(undefined, 'k')).toBeNull();
+    it('verify() accepts its own signature and rejects tampering', async () => {
+        const signed = await sign('abc-123', 'k');
+        // Wire shape unchanged by the WebCrypto move: <value>.<base64url mac>.
+        expect(signed).toMatch(/^abc-123\.[A-Za-z0-9_-]{43}$/);
+        expect(await verify(signed, 'k')).toBe('abc-123');
+        expect(await verify(signed + 'x', 'k')).toBeNull();
+        expect(await verify('abc-124.' + signed.split('.')[1], 'k')).toBeNull();
+        expect(await verify(signed, 'other-key')).toBeNull();
+        expect(await verify(undefined, 'k')).toBeNull();
+        expect(await verify('abc-123.%%%not-base64%%%', 'k')).toBeNull();
     });
 
     it('malformed percent-encoding reads as an absent cookie, not a throw', async () => {
@@ -113,6 +134,26 @@ describe('signed cookies', () => {
         expect(header).toContain('SameSite=Lax');
         expect(cookieHeader('a', '', { clear: true })).toContain('Max-Age=0');
     });
+
+    it('the secure option alone controls the Secure attribute — no env sniffing', () => {
+        expect(cookieHeader('a', 'b', { secure: true })).toContain('; Secure');
+        expect(cookieHeader('a', 'b', { secure: false })).not.toContain('Secure');
+        expect(cookieHeader('a', 'b')).not.toContain('Secure');
+    });
+});
+
+describe('WinterCG purity', () => {
+    it('no file under packages/auth/src imports node:*', () => {
+        // Everything in the package must run on WebCrypto + globals alone
+        // (Node ≥ 20, Cloudflare Workers) — vitest runs from the repo root.
+        const src = join(process.cwd(), 'packages', 'auth', 'src');
+        const files = readdirSync(src).filter((f) => f.endsWith('.js') || f.endsWith('.d.ts'));
+        expect(files.length).toBeGreaterThan(0);
+        for (const file of files) {
+            const code = readFileSync(join(src, file), 'utf-8');
+            expect(code, `${file} must stay runtime-agnostic`).not.toMatch(/from\s+['"]node:/);
+        }
+    });
 });
 
 describe('getSession', () => {
@@ -120,7 +161,7 @@ describe('getSession', () => {
         const secret = 'k';
         const sessions = createSessionStore({ db: await migratedDb(), secret });
         const sid = await sessions.create(USER, 'tok');
-        const req = { headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(sign(sid, secret))}` } };
+        const req = { headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(await sign(sid, secret))}` } };
         expect((await getSession(req, sessions, secret))?.user.login).toBe('octo');
     });
 
@@ -129,7 +170,7 @@ describe('getSession', () => {
         const sessions = createSessionStore({ db: await migratedDb(), secret });
         const sid = await sessions.create(USER, 'tok');
         expect(await getSession({ headers: { cookie: `${SESSION_COOKIE}=${sid}` } }, sessions, secret)).toBeNull();
-        expect(await getSession({ headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(sign(sid, 'wrong'))}` } }, sessions, secret)).toBeNull();
+        expect(await getSession({ headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(await sign(sid, 'wrong'))}` } }, sessions, secret)).toBeNull();
         expect(await getSession({ headers: {} }, sessions, secret)).toBeNull();
     });
 });
