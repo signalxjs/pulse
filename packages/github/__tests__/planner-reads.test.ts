@@ -364,7 +364,7 @@ describe('WinterCG purity', () => {
         // import.meta.url is not a file: URL under the happy-dom environment;
         // vitest runs from the repo root.
         const src = join(process.cwd(), 'packages', 'github', 'src');
-        for (const file of ['index.js', 'live.js', 'fixtures.js', 'fixtures-data.js']) {
+        for (const file of ['index.js', 'live.js', 'fixtures.js', 'fixtures-data.js', 'paging.js']) {
             const code = readFileSync(join(src, file), 'utf-8');
             expect(code, `${file} must stay runtime-agnostic`).not.toMatch(/from\s+['"]node:/);
         }
