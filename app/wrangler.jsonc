@@ -1,7 +1,9 @@
 {
     "name": "pulse",
     "main": "dist-cf/server/entry.cloudflare.js",
-    "account_id": "191d544fe3008058590f9656d041b3a3",
+    // No account_id here on purpose: local dev/CI don't need one, and deploys
+    // pass it via CLOUDFLARE_ACCOUNT_ID so the config can't target the wrong
+    // account by accident.
     "compatibility_date": "2026-07-01",
     // AsyncLocalStorage (node:async_hooks) is what carries the request into
     // in-process server-function calls during SSR — rfc-server §7 v1.1.

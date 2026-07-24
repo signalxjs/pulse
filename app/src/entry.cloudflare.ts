@@ -31,8 +31,8 @@ import type { PulseServerServices } from './server/services.server';
 export interface Env {
     /** ONE db for the isolate: sessions and the ETag cache share it (like node). */
     DB: D1DatabaseLike;
-    /** Cookie-signing / token-encryption secret. REQUIRED — a worker is always production. */
-    PULSE_SECRET?: string;
+    /** Cookie-signing / token-encryption secret. A worker is always production. */
+    PULSE_SECRET: string;
     /** GitHub OAuth app — BOTH or neither (PAT-only sign-in without them). */
     PULSE_OAUTH_CLIENT_ID?: string;
     PULSE_OAUTH_CLIENT_SECRET?: string;
@@ -69,11 +69,13 @@ function init(env: Env): Handlers {
     const db = createD1Db(env.DB);
     const sessions = createSessionStore({ db, secret });
 
-    // OAuth needs BOTH credentials; the fixtures decision keys off the SAME
-    // resolution so a half-configured OAuth app can't silently flip modes.
+    // OAuth needs BOTH credentials.
     const oauth = env.PULSE_OAUTH_CLIENT_ID && env.PULSE_OAUTH_CLIENT_SECRET
         ? { clientId: env.PULSE_OAUTH_CLIENT_ID, clientSecret: env.PULSE_OAUTH_CLIENT_SECRET }
         : undefined;
+    if (env.PULSE_OAUTH_CLIENT_ID && !oauth) {
+        console.warn('[pulse] PULSE_OAUTH_CLIENT_ID is set without PULSE_OAUTH_CLIENT_SECRET — OAuth disabled.');
+    }
     // Fixtures is EXPLICIT-only, exactly like node. There is deliberately
     // no GITHUB_TOKEN fallback on this target at all.
     const fixtures = env.PULSE_FIXTURES === '1';

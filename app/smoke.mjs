@@ -195,6 +195,12 @@ try {
     // wrangler shuts workerd down on SIGTERM — wait for it (bounded), then
     // force-kill, so a lingering child can never wedge CI.
     await new Promise((resolve) => {
+        // Already dead (startup failure) → 'exit' has fired; resolve now
+        // instead of eating the full grace timeout.
+        if (server.exitCode !== null || server.signalCode !== null) {
+            resolve();
+            return;
+        }
         const force = setTimeout(() => {
             server.kill('SIGKILL');
             resolve();
