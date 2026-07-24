@@ -27,12 +27,16 @@ export interface PulseDb {
     batch(stmts: { sql: string; params?: SqlParam[] }[]): Promise<void>;
 }
 
-/** Well-known board columns; labels can be renamed per board, ids cannot. */
+/** Well-known board columns; the ids are fixed, the label mapping is not. */
 export type BoardStatusId = 'backlog' | 'todo' | 'inprogress' | 'inreview' | 'done';
 
 export interface BoardStatus {
     id: BoardStatusId;
-    /** Display label override; null keeps the default label for the id. */
+    /**
+     * GitHub label name that puts an issue in this column (e.g. `status:
+     * in progress`). null = no label mapped: the column is then derived from
+     * issue state only (closed → done, open → todo, PR → inreview).
+     */
     label: string | null;
 }
 
