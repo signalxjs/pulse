@@ -176,7 +176,7 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
                     selection must ride the options themselves. */}
                 <option value="" selected={value === ''}>No label — derived from issue state</option>
                 {labelOptions.map((name) => (
-                    <option key={name} value={name} selected={name === value}>{name}</option>
+                    <option key={name} value={name} selected={name.toLowerCase() === value.toLowerCase()}>{name}</option>
                 ))}
                 {/* A stored mapping whose label has since been deleted or
                     renamed must stay visible (and selected) — silently
