@@ -21,8 +21,20 @@ export function mountFetchHandler(app, path, handler) {
             }
             let body;
             if (req.method !== 'GET' && req.method !== 'HEAD') {
+                // Hard cap while buffering — the handler enforces its own
+                // (smaller) limit, but nothing should be able to make the
+                // bridge allocate an unbounded body first.
+                const BRIDGE_BODY_LIMIT = 64 * 1024;
                 const chunks = [];
-                for await (const chunk of req) chunks.push(chunk);
+                let total = 0;
+                for await (const chunk of req) {
+                    total += chunk.length;
+                    if (total > BRIDGE_BODY_LIMIT) {
+                        res.status(413).json({ error: 'request body too large' });
+                        return;
+                    }
+                    chunks.push(chunk);
+                }
                 body = Buffer.concat(chunks);
             }
             const response = await handler(new Request(url, { method: req.method, headers, body }));

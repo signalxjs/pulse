@@ -97,16 +97,36 @@ async function readJsonBody(request) {
     if (Number.isFinite(declared) && declared > BODY_LIMIT) {
         return { error: jsonResponse(413, { error: 'request body too large' }) };
     }
-    let bytes;
+    // Stream with a running total so the limit is enforced DURING the read
+    // — an over-limit body is rejected as soon as it crosses the cap, not
+    // after being fully buffered.
+    /** @type {Uint8Array[]} */
+    const chunks = [];
+    let total = 0;
     try {
-        bytes = await request.arrayBuffer();
+        if (request.body) {
+            const reader = request.body.getReader();
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                total += value.byteLength;
+                if (total > BODY_LIMIT) {
+                    await reader.cancel();
+                    return { error: jsonResponse(413, { error: 'request body too large' }) };
+                }
+                chunks.push(value);
+            }
+        }
     } catch {
         return { error: jsonResponse(400, { error: 'unreadable request body' }) };
     }
-    if (bytes.byteLength > BODY_LIMIT) {
-        return { error: jsonResponse(413, { error: 'request body too large' }) };
+    if (total === 0) return { body: undefined };
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
     }
-    if (bytes.byteLength === 0) return { body: undefined };
     try {
         return { body: JSON.parse(new TextDecoder().decode(bytes)) };
     } catch {
@@ -119,7 +139,10 @@ async function readJsonBody(request) {
  * @returns {(request: Request) => Promise<Response | null>}
  */
 export function createAuthHandler(options) {
-    const { sessions, secret, fixtures, makeClient, oauth, secureCookies = false, base = '/auth' } = options;
+    const { sessions, secret, fixtures, makeClient, oauth, secureCookies = false } = options;
+    // Normalize once: a leading slash and no trailing slash, so '/auth/'
+    // can't silently break the route match (slice would drop the '/').
+    const base = `/${(options.base ?? '/auth').replace(/^\/+|\/+$/g, '')}`;
     if (!secret) throw new Error('createAuthHandler: a secret is required — an empty secret makes cookies forgeable');
     if (!sessions) throw new Error('createAuthHandler: a SessionStore is required');
     if (typeof makeClient !== 'function') throw new Error('createAuthHandler: makeClient(token) is required');

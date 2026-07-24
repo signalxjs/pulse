@@ -253,6 +253,11 @@ describe('fall-through contract', () => {
         expect(await custom(new Request(`${BASE}/auth/login`))).toBeNull();
         expect((await custom(new Request(`${BASE}/account/login`)))!.status).toBe(303);
     });
+
+    it('normalizes a trailing-slash base instead of silently matching nothing', async () => {
+        const sloppy = makeHandler(sessions, { base: '/auth/', oauth: undefined });
+        expect((await sloppy(new Request(`${BASE}/auth/login`)))!.status).toBe(303);
+    });
 });
 
 describe('getSession (raw header form)', () => {
