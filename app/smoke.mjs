@@ -191,7 +191,10 @@ try {
     console.log(`pulse-smoke${CF ? ' (workerd)' : ''}: ALL PASSED`);
 } finally {
     await browser?.close();
-    server.kill('SIGTERM');
+    // kill() throws ESRCH on an already-exited child (startup failure) —
+    // never let teardown mask the real assertion error.
+    const tryKill = (signal) => { try { server.kill(signal); } catch { /* already gone */ } };
+    tryKill('SIGTERM');
     // wrangler shuts workerd down on SIGTERM — wait for it (bounded), then
     // force-kill, so a lingering child can never wedge CI.
     await new Promise((resolve) => {
@@ -202,7 +205,7 @@ try {
             return;
         }
         const force = setTimeout(() => {
-            server.kill('SIGKILL');
+            tryKill('SIGKILL');
             resolve();
         }, 5000);
         server.once('exit', () => {
