@@ -112,7 +112,9 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                                         data-roadmap-marker={c.number}
                                         title={`${c.title} · ${monthDay(c.end)}`}
                                         class="absolute top-1/2 h-[30px] w-[10px] -translate-y-1/2 rounded-lg"
-                                        style={`left:calc(${(frac * 100).toFixed(3)}% - 5px);background:oklch(0.65 0.19 25)`}
+                                        /* clamp keeps the 10px marker fully inside the track at the
+                                           window edges (frac 0 / 1 would otherwise overhang 5px). */
+                                        style={`left:clamp(0px, calc(${(frac * 100).toFixed(3)}% - 5px), calc(100% - 10px));background:oklch(0.65 0.19 25)`}
                                     />
                                 )
                                 : slot !== null && (
