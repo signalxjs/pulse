@@ -1,0 +1,56 @@
+[
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-15T10:00:00Z",
+    "label": {
+      "name": "bug",
+      "color": "e5533b"
+    }
+  },
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-15T10:00:00Z",
+    "label": {
+      "name": "security",
+      "color": "b08800"
+    }
+  },
+  {
+    "event": "assigned",
+    "actor": {
+      "login": "rin",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "createdAt": "2026-07-14T09:00:00Z",
+    "assignee": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    }
+  },
+  {
+    "event": "commented",
+    "actor": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-07-16T14:00:00Z",
+    "body": "Repro: throttle to Slow 3G, let two API calls 401 at once — both fire a refresh and the later one invalidates the first session."
+  },
+  {
+    "event": "commented",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-07-20T11:00:00Z",
+    "body": "Fix incoming — serializing the refresh behind a single in-flight promise and replaying the queued requests."
+  }
+]

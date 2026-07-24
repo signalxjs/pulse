@@ -3,20 +3,22 @@
  * smokes and offline dev run against this; `scripts/record-fixtures.mjs`
  * refreshes the recordings from the live API.
  *
- * File layout under the fixtures dir (keys mirror the client methods):
+ * The JSON files under `packages/github/fixtures/` are the diffable source
+ * of truth, but the adapter never touches the filesystem: the generated
+ * `fixtures-data.js` statically imports every recording into one map (keys
+ * mirror the client methods):
  *   viewer.json, viewer-orgs.json, viewer-repos.json,
- *   owner-repos/<owner>.json, repo/<owner>/<name>.json
+ *   owner-repos/<owner>.json, repo/<owner>/<name>.json,
+ *   issues/<owner>/<name>.json, labels/<owner>/<name>.json,
+ *   milestones/<owner>/<name>.json, collaborators/<owner>/<name>.json,
+ *   timeline/<owner>/<name>/<n>.json
  */
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const DEFAULT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
+import { FIXTURES } from './fixtures-data.js';
 
 // GitHub logins/repo names: word chars, dots, dashes — and never a pure
-// dot-segment. Anything else (path separators, '..') must not reach
-// join(): the adapter sits behind the /api proxy, where owner/name arrive
-// straight from the URL.
+// dot-segment. Anything else (path separators, '..') must not reach the
+// map lookup: the adapter sits behind the /api proxy, where owner/name
+// arrive straight from the URL.
 const SAFE_SEGMENT = /^(?!\.{1,2}$)[A-Za-z0-9._-]+$/;
 
 /** @param {string} segment */
@@ -25,27 +27,24 @@ function isSafeSegment(segment) {
 }
 
 /**
- * @param {string} [fixturesDir]
+ * @param {string} rel
+ * @returns {any}
+ */
+function load(rel) {
+    return Object.hasOwn(FIXTURES, rel) ? FIXTURES[rel] : null;
+}
+
+/**
  * @returns {import('./index.js').GitHubClient}
  */
-export function createFixturesClient(fixturesDir = DEFAULT_DIR) {
-    /**
-     * @param {string} rel
-     * @returns {any}
-     */
-    function load(rel) {
-        const path = join(fixturesDir, rel);
-        if (!existsSync(path)) return null;
-        return JSON.parse(readFileSync(path, 'utf-8'));
-    }
-
+export function createFixturesClient() {
     return {
         async viewer() {
             const viewer = load('viewer.json');
             if (!viewer) {
                 // The interface promises a user — a missing recording is a
-                // broken fixtures dir, not a data state. Fail loudly.
-                throw new Error(`fixtures dir ${fixturesDir} has no viewer.json — run packages/github/scripts/record-fixtures.mjs`);
+                // broken fixtures build, not a data state. Fail loudly.
+                throw new Error('fixtures have no viewer.json — run packages/github/scripts/record-fixtures.mjs');
             }
             return viewer;
         },
@@ -57,11 +56,81 @@ export function createFixturesClient(fixturesDir = DEFAULT_DIR) {
         },
         async ownerRepos(owner) {
             if (!isSafeSegment(owner)) return [];
-            return load(join('owner-repos', `${owner}.json`)) ?? [];
+            return load(`owner-repos/${owner}.json`) ?? [];
         },
         async repo(owner, name) {
             if (!isSafeSegment(owner) || !isSafeSegment(name)) return null;
-            return load(join('repo', owner, `${name}.json`));
+            return load(`repo/${owner}/${name}.json`);
+        },
+
+        async repoIssues(owner, name, opts = {}) {
+            /** @type {import('./index.js').Page<import('./index.js').GitHubIssue>} */
+            const empty = { items: [], nextPage: null };
+            if (!isSafeSegment(owner) || !isSafeSegment(name)) return empty;
+            /** @type {import('./index.js').GitHubIssue[] | null} */
+            const all = load(`issues/${owner}/${name}.json`);
+            if (!all) return empty;
+
+            const state = opts.state ?? 'all';
+            const wantLabels = opts.labels
+                ? opts.labels.split(',').map((l) => l.trim().toLowerCase()).filter(Boolean)
+                : null;
+            const filtered = all
+                .filter((i) => {
+                    if (state !== 'all' && i.state !== state) return false;
+                    if (wantLabels) {
+                        const have = i.labels.map((l) => l.name.toLowerCase());
+                        if (!wantLabels.every((l) => have.includes(l))) return false;
+                    }
+                    if (opts.milestone !== undefined) {
+                        if (opts.milestone === 'none') {
+                            if (i.milestone) return false;
+                        } else if (opts.milestone === '*') {
+                            if (!i.milestone) return false;
+                        } else if (i.milestone?.number !== Number(opts.milestone)) {
+                            return false;
+                        }
+                    }
+                    if (opts.since && i.updatedAt < opts.since) return false;
+                    return true;
+                })
+                // Same order the live endpoint serves: sort=updated, desc.
+                .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
+
+            const perPage = opts.perPage ?? 100;
+            const page = opts.page ?? 1;
+            const start = (page - 1) * perPage;
+            return {
+                items: filtered.slice(start, start + perPage),
+                nextPage: start + perPage < filtered.length ? page + 1 : null
+            };
+        },
+
+        async repoLabels(owner, name) {
+            if (!isSafeSegment(owner) || !isSafeSegment(name)) return [];
+            return load(`labels/${owner}/${name}.json`) ?? [];
+        },
+
+        async repoMilestones(owner, name) {
+            if (!isSafeSegment(owner) || !isSafeSegment(name)) return [];
+            return load(`milestones/${owner}/${name}.json`) ?? [];
+        },
+
+        async repoCollaborators(owner, name) {
+            if (!isSafeSegment(owner) || !isSafeSegment(name)) return [];
+            return load(`collaborators/${owner}/${name}.json`) ?? [];
+        },
+
+        async issue(owner, name, n) {
+            if (!isSafeSegment(owner) || !isSafeSegment(name)) return null;
+            /** @type {import('./index.js').GitHubIssue[] | null} */
+            const all = load(`issues/${owner}/${name}.json`);
+            return all?.find((i) => i.number === Number(n)) ?? null;
+        },
+
+        async issueTimeline(owner, name, n) {
+            if (!isSafeSegment(owner) || !isSafeSegment(name) || !isSafeSegment(String(n))) return [];
+            return load(`timeline/${owner}/${name}/${n}.json`) ?? [];
         }
     };
 }

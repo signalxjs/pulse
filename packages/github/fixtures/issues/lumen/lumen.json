@@ -1,0 +1,994 @@
+[
+  {
+    "number": 511,
+    "title": "Sanitize href scheme in Link component",
+    "body": "The Link component interpolates `href` untouched — a `javascript:` URL walks straight through. Strip or refuse non-http(s) schemes before render.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "security",
+        "color": "b08800",
+        "description": "Security-sensitive"
+      },
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "status: todo",
+        "color": "5b7fd9",
+        "description": "Planner status: Todo"
+      },
+      {
+        "name": "P0",
+        "color": "d1242f",
+        "description": "Urgent"
+      }
+    ],
+    "assignees": [],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 0,
+    "author": {
+      "login": "rin",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "createdAt": "2026-06-24T16:00:00Z",
+    "updatedAt": "2026-07-23T14:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/511"
+  },
+  {
+    "number": 482,
+    "title": "Fix auth token refresh race condition",
+    "body": "Two parallel 401 responses both kick off a token refresh; the second invalidates the first and the session drops. Serialize refresh behind a single in-flight promise.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "security",
+        "color": "b08800",
+        "description": "Security-sensitive"
+      },
+      {
+        "name": "status: in progress",
+        "color": "d9863b",
+        "description": "Planner status: In Progress"
+      },
+      {
+        "name": "P0",
+        "color": "d1242f",
+        "description": "Urgent"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "mira",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 4,
+    "author": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-14T11:00:00Z",
+    "updatedAt": "2026-07-22T09:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/482"
+  },
+  {
+    "number": 479,
+    "title": "Memory leak in WebSocket reconnect loop",
+    "body": "Every reconnect registers a fresh message listener without disposing the old one — heap grows unbounded on flaky networks.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "performance",
+        "color": "2da44e",
+        "description": "Speed and memory work"
+      },
+      {
+        "name": "status: in review",
+        "color": "3f9fc4",
+        "description": "Planner status: In Review"
+      },
+      {
+        "name": "P0",
+        "color": "d1242f",
+        "description": "Urgent"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "devon",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 7,
+    "author": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-13T16:00:00Z",
+    "updatedAt": "2026-07-23T18:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/479"
+  },
+  {
+    "number": 501,
+    "title": "Add dark-mode tokens to theme system",
+    "body": "The theme system only ships light-mode tokens. Add a dark set behind `prefers-color-scheme` plus a manual override.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "feature",
+        "color": "8250df",
+        "description": "New capability"
+      },
+      {
+        "name": "status: todo",
+        "color": "5b7fd9",
+        "description": "Planner status: Todo"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "sana",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 2,
+    "author": {
+      "login": "sana",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+    },
+    "createdAt": "2026-06-21T14:00:00Z",
+    "updatedAt": "2026-07-21T16:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/501"
+  },
+  {
+    "number": 468,
+    "title": "Virtualize long list rendering",
+    "body": "Lists over ~500 rows render everything eagerly. Introduce windowing so only the visible slice mounts.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "performance",
+        "color": "2da44e",
+        "description": "Speed and memory work"
+      },
+      {
+        "name": "enhancement",
+        "color": "2b9bb5",
+        "description": "Improvement to existing behavior"
+      },
+      {
+        "name": "status: in progress",
+        "color": "d9863b",
+        "description": "Planner status: In Progress"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "lee",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 5,
+    "author": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-06-10T13:00:00Z",
+    "updatedAt": "2026-07-20T07:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/468"
+  },
+  {
+    "number": 487,
+    "title": "Reduce bundle size of icon set",
+    "body": "The icon barrel drags every glyph into the bundle. Split entry points so consumers pay only for what they import.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "performance",
+        "color": "2da44e",
+        "description": "Speed and memory work"
+      },
+      {
+        "name": "status: in progress",
+        "color": "d9863b",
+        "description": "Planner status: In Progress"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "mira",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 4,
+    "author": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-16T16:00:00Z",
+    "updatedAt": "2026-07-23T14:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/487"
+  },
+  {
+    "number": 490,
+    "title": "Keyboard nav skips disabled menu items",
+    "body": "Arrow-key navigation focuses disabled items and gets stuck. Skip items with `aria-disabled` when walking the list.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "good first issue",
+        "color": "1f9e8e",
+        "description": "Good for newcomers"
+      },
+      {
+        "name": "status: todo",
+        "color": "5b7fd9",
+        "description": "Planner status: Todo"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "mira",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 3,
+    "author": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-17T11:00:00Z",
+    "updatedAt": "2026-07-22T17:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/490"
+  },
+  {
+    "number": 471,
+    "title": "Deprecate legacy Portal API",
+    "body": "The v1 Portal API predates the mount registry and confuses new users. Deprecate with a console warning and migration pointer.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "enhancement",
+        "color": "2b9bb5",
+        "description": "Improvement to existing behavior"
+      },
+      {
+        "name": "status: in review",
+        "color": "3f9fc4",
+        "description": "Planner status: In Review"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "lee",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 8,
+    "author": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-06-11T16:00:00Z",
+    "updatedAt": "2026-07-23T10:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/471"
+  },
+  {
+    "number": 509,
+    "title": "Type inference breaks on generic Select",
+    "body": "A generic `Select<T>` loses `T` when `options` is passed inline — TS falls back to `unknown` and `onChange` mistypes.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "status: in progress",
+        "color": "d9863b",
+        "description": "Planner status: In Progress"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "devon",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 5,
+    "author": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-23T14:00:00Z",
+    "updatedAt": "2026-07-21T12:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/509"
+  },
+  {
+    "number": 513,
+    "title": "Add prefers-reduced-motion to transitions",
+    "body": "Transition helpers ignore the reduced-motion media query. Collapse durations to zero when the user opts out.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "feature",
+        "color": "8250df",
+        "description": "New capability"
+      },
+      {
+        "name": "good first issue",
+        "color": "1f9e8e",
+        "description": "Good for newcomers"
+      },
+      {
+        "name": "status: todo",
+        "color": "5b7fd9",
+        "description": "Planner status: Todo"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "sana",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 1,
+    "author": {
+      "login": "sana",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+    },
+    "createdAt": "2026-06-25T10:00:00Z",
+    "updatedAt": "2026-07-21T16:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/513"
+  },
+  {
+    "number": 492,
+    "title": "perf: tree-shake icon exports",
+    "body": "Splits the icon barrel into per-glyph entry points and marks the package side-effect-free. Closes #487.",
+    "state": "open",
+    "isPr": true,
+    "draft": false,
+    "labels": [
+      {
+        "name": "performance",
+        "color": "2da44e",
+        "description": "Speed and memory work"
+      },
+      {
+        "name": "status: in review",
+        "color": "3f9fc4",
+        "description": "Planner status: In Review"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "mira",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 3,
+    "author": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-18T13:00:00Z",
+    "updatedAt": "2026-07-20T07:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/pull/492"
+  },
+  {
+    "number": 494,
+    "title": "refactor: portal API v2 migration",
+    "body": "Moves Portal onto the mount registry, keeps a deprecated v1 shim with a warning. Closes #471.",
+    "state": "open",
+    "isPr": true,
+    "draft": false,
+    "labels": [
+      {
+        "name": "enhancement",
+        "color": "2b9bb5",
+        "description": "Improvement to existing behavior"
+      },
+      {
+        "name": "status: in review",
+        "color": "3f9fc4",
+        "description": "Planner status: In Review"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "lee",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 5,
+    "author": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-06-18T15:00:00Z",
+    "updatedAt": "2026-07-22T09:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/pull/494"
+  },
+  {
+    "number": 452,
+    "title": "Publish v3 migration guide",
+    "body": "A step-by-step migration guide for the v3 breaking changes: tokens, Portal, and the new Select generics.",
+    "state": "closed",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "docs",
+        "color": "547bd6",
+        "description": "Documentation"
+      },
+      {
+        "name": "status: done",
+        "color": "3fb950",
+        "description": "Planner status: Done"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "mira",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 4,
+    "author": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-04T13:00:00Z",
+    "updatedAt": "2026-07-20T11:00:00Z",
+    "closedAt": "2026-07-20T11:00:00Z",
+    "htmlUrl": "https://github.com/lumen/lumen/issues/452"
+  },
+  {
+    "number": 465,
+    "title": "Fix contrast on disabled buttons",
+    "body": "Disabled buttons sit at 2.4:1 against the default surface — below AA. Darken the disabled foreground token.",
+    "state": "closed",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "docs",
+        "color": "547bd6",
+        "description": "Documentation"
+      },
+      {
+        "name": "status: done",
+        "color": "3fb950",
+        "description": "Planner status: Done"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "devon",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 24,
+      "title": "Cycle 24"
+    },
+    "comments": 2,
+    "author": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-09T10:00:00Z",
+    "updatedAt": "2026-07-21T12:00:00Z",
+    "closedAt": "2026-07-21T12:00:00Z",
+    "htmlUrl": "https://github.com/lumen/lumen/issues/465"
+  },
+  {
+    "number": 444,
+    "title": "Flaky test: useDebounce timing",
+    "body": "The useDebounce spec races real timers on slow CI runners. Switch it to fake timers.",
+    "state": "closed",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "status: done",
+        "color": "3fb950",
+        "description": "Planner status: Done"
+      },
+      {
+        "name": "P1",
+        "color": "e8a33d",
+        "description": "High"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "sana",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 23,
+      "title": "Cycle 23"
+    },
+    "comments": 6,
+    "author": {
+      "login": "sana",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+    },
+    "createdAt": "2026-06-02T13:00:00Z",
+    "updatedAt": "2026-07-13T10:00:00Z",
+    "closedAt": "2026-07-13T10:00:00Z",
+    "htmlUrl": "https://github.com/lumen/lumen/issues/444"
+  },
+  {
+    "number": 460,
+    "title": "Migrate CI to Node 22",
+    "body": "Bump the CI matrix to Node 22 and drop the EOL 16 lane.",
+    "state": "closed",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "enhancement",
+        "color": "2b9bb5",
+        "description": "Improvement to existing behavior"
+      },
+      {
+        "name": "status: done",
+        "color": "3fb950",
+        "description": "Planner status: Done"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "devon",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 23,
+      "title": "Cycle 23"
+    },
+    "comments": 3,
+    "author": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-07T13:00:00Z",
+    "updatedAt": "2026-07-13T14:00:00Z",
+    "closedAt": "2026-07-13T14:00:00Z",
+    "htmlUrl": "https://github.com/lumen/lumen/issues/460"
+  },
+  {
+    "number": 503,
+    "title": "Support RTL layout in Dialog",
+    "body": "Dialog hard-codes left-anchored close buttons and slide direction. Respect `dir=\"rtl\"`.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "feature",
+        "color": "8250df",
+        "description": "New capability"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "devon",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 25,
+      "title": "Cycle 25"
+    },
+    "comments": 0,
+    "author": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-21T16:00:00Z",
+    "updatedAt": "2026-07-17T16:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/503"
+  },
+  {
+    "number": 495,
+    "title": "Expose focus-trap as a standalone hook",
+    "body": "The focus-trap inside Dialog is useful on its own. Extract it as `useFocusTrap` with the same escape semantics.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "feature",
+        "color": "8250df",
+        "description": "New capability"
+      },
+      {
+        "name": "enhancement",
+        "color": "2b9bb5",
+        "description": "Improvement to existing behavior"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "lee",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 25,
+      "title": "Cycle 25"
+    },
+    "comments": 2,
+    "author": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-06-19T16:00:00Z",
+    "updatedAt": "2026-07-15T08:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/495"
+  },
+  {
+    "number": 498,
+    "title": "Add ARIA live region to Toast",
+    "body": "Toasts appear silently to screen readers. Announce them through a polite live region.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "feature",
+        "color": "8250df",
+        "description": "New capability"
+      },
+      {
+        "name": "good first issue",
+        "color": "1f9e8e",
+        "description": "Good for newcomers"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "sana",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 25,
+      "title": "Cycle 25"
+    },
+    "comments": 1,
+    "author": {
+      "login": "sana",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+    },
+    "createdAt": "2026-06-20T11:00:00Z",
+    "updatedAt": "2026-07-15T11:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/498"
+  },
+  {
+    "number": 506,
+    "title": "Tooltip flickers on rapid hover",
+    "body": "Moving quickly across trigger boundaries opens and closes the tooltip in a loop. Debounce the open state.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "e5533b",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P2",
+        "color": "6c8fd6",
+        "description": "Medium"
+      }
+    ],
+    "assignees": [],
+    "milestone": {
+      "number": 25,
+      "title": "Cycle 25"
+    },
+    "comments": 0,
+    "author": {
+      "login": "rin",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "createdAt": "2026-06-22T11:00:00Z",
+    "updatedAt": "2026-07-17T10:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/506"
+  },
+  {
+    "number": 455,
+    "title": "Document SSR hydration caveats",
+    "body": "Collect the known hydration mismatch cases (timestamps, locale numbers, portals) into one doc page.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "docs",
+        "color": "547bd6",
+        "description": "Documentation"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P3",
+        "color": "8b949e",
+        "description": "Low"
+      }
+    ],
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "author": {
+      "login": "rin",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "createdAt": "2026-06-05T16:00:00Z",
+    "updatedAt": "2026-06-25T09:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/455"
+  },
+  {
+    "number": 476,
+    "title": "Improve tree-shaking for Menu",
+    "body": "Menu pulls in the whole positioning engine even for static placement. Split the dynamic positioner out.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "performance",
+        "color": "2da44e",
+        "description": "Speed and memory work"
+      },
+      {
+        "name": "status: backlog",
+        "color": "8b949e",
+        "description": "Planner status: Backlog"
+      },
+      {
+        "name": "P3",
+        "color": "8b949e",
+        "description": "Low"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "lee",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+      }
+    ],
+    "milestone": null,
+    "comments": 0,
+    "author": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-06-12T13:00:00Z",
+    "updatedAt": "2026-06-24T09:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/lumen/lumen/issues/476"
+  }
+]

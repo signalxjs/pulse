@@ -1,0 +1,49 @@
+[
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-06-16T11:00:00Z",
+    "label": {
+      "name": "performance",
+      "color": "2da44e"
+    }
+  },
+  {
+    "event": "assigned",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-07-15T09:00:00Z",
+    "assignee": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    }
+  },
+  {
+    "event": "commented",
+    "actor": {
+      "login": "sana",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4"
+    },
+    "createdAt": "2026-07-18T13:00:00Z",
+    "body": "Icons are 38% of the client bundle in the size report — almost all unused glyphs pulled in by the barrel."
+  },
+  {
+    "event": "cross-referenced",
+    "actor": {
+      "login": "mira",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4"
+    },
+    "createdAt": "2026-07-22T10:00:00Z",
+    "source": {
+      "number": 492,
+      "title": "perf: tree-shake icon exports",
+      "isPr": true,
+      "repo": "lumen/lumen"
+    }
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "pulse-dev",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+    },
+    "createdAt": "2026-07-10T09:05:00Z",
+    "label": {
+      "name": "enhancement",
+      "color": "a2eeef"
+    }
+  },
+  {
+    "event": "commented",
+    "actor": {
+      "login": "pulse-dev",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+    },
+    "createdAt": "2026-07-21T14:00:00Z",
+    "body": "Optimistic update first, then reconcile with the label write — matches the planner design."
+  }
+]

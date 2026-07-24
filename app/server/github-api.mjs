@@ -6,7 +6,9 @@
 // fixtures when PULSE_FIXTURES=1 or no GITHUB_TOKEN, else a live client on
 // the env token (single-user dev convenience).
 import express from 'express';
-import { createLiveClient, createFixturesClient, createSqliteEtagCache } from '@pulse/github';
+import { createLiveClient } from '@pulse/github';
+import { createFixturesClient } from '@pulse/github/fixtures';
+import { createSqliteEtagCache } from '@pulse/github/node';
 
 export function createGitHubApi({ dbPath, getSession, fixtures } = {}) {
     // Fixtures mode never talks to GitHub — no ETag cache to keep.

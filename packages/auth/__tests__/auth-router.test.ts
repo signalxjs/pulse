@@ -29,7 +29,13 @@ beforeAll(async () => {
             viewerOrgs: async () => [],
             viewerRepos: async () => [],
             ownerRepos: async () => [],
-            repo: async () => null
+            repo: async () => null,
+            repoIssues: async () => ({ items: [], nextPage: null }),
+            repoLabels: async () => [],
+            repoMilestones: async () => [],
+            repoCollaborators: async () => [],
+            issue: async () => null,
+            issueTimeline: async () => []
         }),
         oauth: { clientId: 'cid', clientSecret: 'cs' },
         fetch: (async () => ({

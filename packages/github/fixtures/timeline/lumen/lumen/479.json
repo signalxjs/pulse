@@ -1,0 +1,61 @@
+[
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-14T12:00:00Z",
+    "label": {
+      "name": "bug",
+      "color": "e5533b"
+    }
+  },
+  {
+    "event": "labeled",
+    "actor": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-06-14T12:00:00Z",
+    "label": {
+      "name": "performance",
+      "color": "2da44e"
+    }
+  },
+  {
+    "event": "assigned",
+    "actor": {
+      "login": "rin",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+    },
+    "createdAt": "2026-07-14T10:00:00Z",
+    "assignee": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    }
+  },
+  {
+    "event": "commented",
+    "actor": {
+      "login": "lee",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/5?v=4"
+    },
+    "createdAt": "2026-07-17T15:00:00Z",
+    "body": "Heap snapshot after 40 reconnects shows the listener array at 40 entries — nothing ever unsubscribes."
+  },
+  {
+    "event": "cross-referenced",
+    "actor": {
+      "login": "devon",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4"
+    },
+    "createdAt": "2026-07-21T09:00:00Z",
+    "source": {
+      "number": 491,
+      "title": "fix: dispose socket listeners on reconnect",
+      "isPr": true,
+      "repo": "lumen/lumen"
+    }
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "bug",
+    "color": "e5533b",
+    "description": "Something isn't working"
+  },
+  {
+    "name": "feature",
+    "color": "8250df",
+    "description": "New capability"
+  },
+  {
+    "name": "performance",
+    "color": "2da44e",
+    "description": "Speed and memory work"
+  },
+  {
+    "name": "docs",
+    "color": "547bd6",
+    "description": "Documentation"
+  },
+  {
+    "name": "security",
+    "color": "b08800",
+    "description": "Security-sensitive"
+  },
+  {
+    "name": "good first issue",
+    "color": "1f9e8e",
+    "description": "Good for newcomers"
+  },
+  {
+    "name": "enhancement",
+    "color": "2b9bb5",
+    "description": "Improvement to existing behavior"
+  },
+  {
+    "name": "status: backlog",
+    "color": "8b949e",
+    "description": "Planner status: Backlog"
+  },
+  {
+    "name": "status: todo",
+    "color": "5b7fd9",
+    "description": "Planner status: Todo"
+  },
+  {
+    "name": "status: in progress",
+    "color": "d9863b",
+    "description": "Planner status: In Progress"
+  },
+  {
+    "name": "status: in review",
+    "color": "3f9fc4",
+    "description": "Planner status: In Review"
+  },
+  {
+    "name": "status: done",
+    "color": "3fb950",
+    "description": "Planner status: Done"
+  },
+  {
+    "name": "P0",
+    "color": "d1242f",
+    "description": "Urgent"
+  },
+  {
+    "name": "P1",
+    "color": "e8a33d",
+    "description": "High"
+  },
+  {
+    "name": "P2",
+    "color": "6c8fd6",
+    "description": "Medium"
+  },
+  {
+    "name": "P3",
+    "color": "8b949e",
+    "description": "Low"
+  }
+]

@@ -4,7 +4,8 @@
  * requests carry If-None-Match, and 304s are served from the cache.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { createLiveClient, GitHubApiError, createSqliteEtagCache } from '@pulse/github';
+import { createLiveClient, GitHubApiError } from '@pulse/github';
+import { createSqliteEtagCache } from '@pulse/github/node';
 
 const USER = { login: 'octo', name: 'Octo', avatar_url: 'https://a/u' };
 
@@ -99,7 +100,7 @@ describe('createLiveClient — construction', () => {
 
 describe('fixtures adapter', () => {
     it('serves the committed recordings, tokenless', async () => {
-        const { createFixturesClient } = await import('@pulse/github');
+        const { createFixturesClient } = await import('@pulse/github/fixtures');
         const gh = createFixturesClient();
         const viewer = await gh.viewer();
         expect(viewer.login).toBe('pulse-dev');
@@ -112,7 +113,7 @@ describe('fixtures adapter', () => {
     });
 
     it('rejects path-traversal segments instead of joining them', async () => {
-        const { createFixturesClient } = await import('@pulse/github');
+        const { createFixturesClient } = await import('@pulse/github/fixtures');
         const gh = createFixturesClient();
         expect(await gh.repo('..', '..')).toBeNull();
         expect(await gh.repo('../../../../etc', 'passwd')).toBeNull();
