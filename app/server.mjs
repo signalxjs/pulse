@@ -7,11 +7,12 @@ import express from 'express';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { createSessionStore, createAuthRouter, getSession } from '@pulse/auth';
+import { createSessionStore, createAuthHandler, getSession } from '@pulse/auth';
 import { createSqliteDb } from '@pulse/db/sqlite';
 import { applyMigrations } from '@pulse/db/migrate';
 import { createLiveClient, createDbEtagCache } from '@pulse/github';
 import { createFixturesClient } from '@pulse/github/fixtures';
+import { mountFetchHandler } from './server/web-bridge.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -68,7 +69,9 @@ async function createServer() {
     // request is served — the `use:` chain (withAuth) reads it per call.
     globalThis.__PULSE_SERVER__ = { sessions, etagCache, makeGitHubClient, fixtures, secret };
 
-    app.use('/auth', createAuthRouter({ sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies }));
+    // The auth surface is a WinterCG fetch handler (Workers-ready); the
+    // bridge adapts it to Express for local serving.
+    mountFetchHandler(app, '/auth', createAuthHandler({ sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies }));
     console.log(`[pulse] GitHub adapter: ${fixtures ? 'fixtures (tokenless)' : 'live'}; OAuth: ${oauth ? 'configured' : 'off (PAT only)'}`);
 
     // Per-request SSR context: the signed-in user, for the auth guard.

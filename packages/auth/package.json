@@ -16,11 +16,7 @@
         "node": ">=24"
     },
     "dependencies": {
-        "express": "^5.2.1",
         "@pulse/github": "workspace:*",
         "@pulse/db": "workspace:*"
-    },
-    "devDependencies": {
-        "@types/express": "^5.0.6"
     }
 }

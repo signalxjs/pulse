@@ -60,11 +60,13 @@ export async function verify(signed, secret) {
 }
 
 /**
- * @param {{ headers: { cookie?: string } }} req
+ * @param {string | null | undefined | { headers: { cookie?: string } }} source
+ *   Raw `cookie` header value (WinterCG: `request.headers.get('cookie')`) or
+ *   a structural request ({ headers: { cookie } } — Express, SSR entries).
  * @param {string} name
  */
-export function readCookie(req, name) {
-    const header = req.headers.cookie;
+export function readCookie(source, name) {
+    const header = typeof source === 'string' ? source : source?.headers?.cookie;
     if (!header) return undefined;
     for (const part of header.split(';')) {
         const eq = part.indexOf('=');

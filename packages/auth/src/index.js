@@ -7,5 +7,5 @@
  */
 
 export { createSessionStore } from './sessions.js';
-export { createAuthRouter, getSession } from './router.js';
+export { createAuthHandler, getSession } from './handler.js';
 export { SESSION_COOKIE } from './cookies.js';
