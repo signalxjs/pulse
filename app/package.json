@@ -18,7 +18,7 @@
         "@sigx/server-renderer": "catalog:",
         "@sigx/cache": "catalog:",
         "@sigx/router": "^0.10.0",
-        "@sigx/store": "^0.10.0",
+        "@sigx/store": "^0.11.0",
         "@sigx/daisyui": "^0.10.0",
         "daisyui": "^5.5.14",
         "tailwindcss": "^4.2.4",

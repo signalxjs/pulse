@@ -3,7 +3,6 @@
 // pattern from sigx core's rfc-ssr-platform §3.3). Run production with
 // `--conditions production` for the NODE_ENV-stripped dists.
 import express from 'express';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -86,13 +85,14 @@ async function createServer() {
             entry: '/src/entry-server.tsx',
             isBot
         });
-        // createDevRequestHandler invokes the app factory as factory(url) —
-        // req never reaches it (core#304). Bridge the full request context
-        // (user + PulseApi client) through AsyncLocalStorage until the fix
-        // ships; entry-server reads globalThis.__PULSE_DEV_CTX__.
-        const als = new AsyncLocalStorage();
-        globalThis.__PULSE_DEV_CTX__ = () => als.getStore() ?? null;
-        app.use((req, res, next) => als.run(requestCtx(req), () => handler(req, res, next)));
+        // The dev handler forwards the request to the factory since
+        // @sigx/vite 0.13.0 (core#304) — as the raw IncomingMessage, where
+        // prod passes a resolved context. Decorate the request so the
+        // factory's normalizer finds the same shape either way.
+        app.use((req, res, next) => {
+            req.pulseCtx = requestCtx(req);
+            handler(req, res, next);
+        });
     } else {
         const { createRequestHandler } = await import('@sigx/server-renderer/node');
         const { collectAssets } = await import('@sigx/vite/ssr');

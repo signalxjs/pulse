@@ -80,12 +80,17 @@ users should not need to know this — candidate fixes: `sigxPlugin()`
 injects the map itself in serve mode, or a `create @sigx` SSR template
 carries it.
 
-### F8 — dev handler drops `req` from the app factory (R1 · core#304)
+### F8 — dev handler drops `req` from the app factory (R1 · RESOLVED, core#304 in @sigx/vite 0.13.0)
 `createRequestHandler` (prod) supports `app: (url, req)` so SSR can read
-the session cookie; `createDevRequestHandler` invokes `factory(url)` —
-auth'd apps render signed-out in dev. Pulse bridges the session through
+the session cookie; `createDevRequestHandler` invoked `factory(url)` —
+auth'd apps rendered signed-out in dev. Pulse bridged the session through
 AsyncLocalStorage in dev (exactly the pattern rfc-ssr-platform §2.3
-promises apps never need). Drop the bridge when the @sigx/vite fix ships.
+promises apps never need). Fixed in @sigx/vite 0.13.0: the dev handler now
+calls `factory(url, devReq, platform)`, matching both prod handlers. Pulse
+dropped the bridge (pulse#24); note the residual asymmetry — dev forwards
+the raw `IncomingMessage` where our prod handler passes a resolved context,
+so the factory normalizes both shapes (`ctx` vs a request carrying
+`req.pulseCtx`).
 
 ### F9 — template .gitignore blanket `*.js`/`*.d.ts` drops source files (R3 · repo-template#22)
 Bit twice: `env.d.ts` (CSS-module ambient declaration) silently untracked
@@ -99,7 +104,10 @@ silently skipped registration — the client hydrated signed-OUT with no
 warning. Pattern that works (now in Pulse): pre-render consumers (guards)
 read request state via a DI injectable; the store is first touched in the
 root component's setup, where the transfer can register. The store should
-dev-warn in the no-instance server case.
+dev-warn in the no-instance server case. Update: store 0.11.0 (store#71)
+ships exactly that dev-warning and its changelog documents Pulse's pattern
+as the recommended shape for request state — the workaround graduated into
+the blessed pattern. Pulse is on 0.11.0 as of pulse#24.
 
 ### F11 — @sigx/daisyui ThemeProvider has no SSR story → theme FOUC (R3 · daisyui#51)
 `ThemeProvider` sets `data-theme` client-side only (its setup is guarded by

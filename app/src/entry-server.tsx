@@ -13,26 +13,34 @@ export interface RequestContext {
     api: PulseApi | null;
 }
 
+/** A request object decorated with the resolved context (dev path: the
+ * handler forwards the raw IncomingMessage, and server.mjs middleware
+ * stamps `pulseCtx` on it before rendering). */
+interface CtxCarrier {
+    pulseCtx?: RequestContext | null;
+}
+
 /**
  * The per-request app factory (the entry contract — core
  * docs/router-ssr-contract.md §1): a FRESH app + router scoped to this URL,
  * so concurrent SSR can't interleave. Both request handlers consume this
  * export. The second parameter is the request's context — the signed-in
- * user plus the PulseApi seam over the request's GitHub client — resolved
- * by server.mjs. The user rides DI (useRequestUser) so the auth guard sees
- * it pre-render, and App's setup seeds the session store during component
- * resolution (the only place ssrState can register — store#63). Signed-out
- * semantics are `ctx.user: null` (a whole-ctx `null` is the dev-bridge
- * fallback case — see __PULSE_DEV_CTX__).
- *
- * NOTE: the dev handler currently drops the second argument (core#304) —
- * server.mjs carries an AsyncLocalStorage workaround until that ships.
+ * user plus the PulseApi seam over the request's GitHub client — in one of
+ * two shapes: the resolved context itself (prod handler, tests), or a
+ * request carrying it as `pulseCtx` (dev — the handler forwards the raw
+ * IncomingMessage since @sigx/vite 0.13.0, core#304). The user rides DI
+ * (useRequestUser) so the auth guard sees it pre-render, and App's setup
+ * seeds the session store during component resolution (the pattern
+ * store 0.11 documents for request state — store#63). Signed-out semantics
+ * are `user: null`.
  */
-export async function createApp(url: string, ctx: RequestContext | null = null) {
+export async function createApp(url: string, ctxOrReq: RequestContext | CtxCarrier | null = null) {
     const app = defineApp(<App />);
     app.use(cachePlugin());
 
-    const resolved = ctx ?? globalThis.__PULSE_DEV_CTX__?.() ?? null;
+    const resolved: RequestContext | null =
+        ctxOrReq && 'pulseCtx' in ctxOrReq ? ctxOrReq.pulseCtx ?? null
+        : (ctxOrReq as RequestContext | null);
 
     // The request's user travels via DI: the guard reads it pre-render, and
     // App's setup seeds the session store INSIDE component resolution — the
