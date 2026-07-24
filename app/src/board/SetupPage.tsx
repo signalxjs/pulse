@@ -96,6 +96,16 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
         // be absurd.
         const createdFor = (slot: string): string | null =>
             toCreate.find((m) => m.slot === slot)?.name ?? null;
+        // Labels FIRST: if creation fails (permissions, rate limit), no
+        // config is persisted — a saved config must never map slots to
+        // labels that don't exist in the repo.
+        if (toCreate.length > 0) {
+            await createMissingLabels({
+                owner: props.owner,
+                repo: props.repo,
+                labels: toCreate.map(({ name, color, description }) => ({ name, color, description }))
+            });
+        }
         await saveBoard({
             version: 1,
             owner: props.owner,
@@ -110,13 +120,6 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
             cycleSource: f.useCycles ? 'milestones' : 'none',
             closeOnDone: f.closeOnDone
         });
-        if (toCreate.length > 0) {
-            await createMissingLabels({
-                owner: props.owner,
-                repo: props.repo,
-                labels: toCreate.map(({ name, color, description }) => ({ name, color, description }))
-            });
-        }
         return true;
     });
 
@@ -134,9 +137,24 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
         const f = form.current;
         const det = detect.value;
         if (!f || !det) {
+            // A failed read must offer a way out — a spinner that can
+            // never resolve is a dead end (transient network, revoked
+            // token). refresh() re-runs both reads.
+            const failed = detect.state === 'errored' || repoLabels.state === 'errored';
             return (
-                <div data-setup-page class="flex h-full items-center justify-center">
-                    <span class="text-[12.5px] text-tf">Reading the repo's conventions…</span>
+                <div data-setup-page class="flex h-full flex-col items-center justify-center gap-3">
+                    <span class="text-[12.5px] text-tf">
+                        {failed ? "Couldn't read the repo's conventions." : 'Reading the repo\'s conventions…'}
+                    </span>
+                    {failed && (
+                        <button
+                            type="button"
+                            onClick={() => { detect.refresh(); repoLabels.refresh(); }}
+                            class="cursor-pointer rounded-lg bg-ac px-3 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110"
+                        >
+                            Retry
+                        </button>
+                    )}
                 </div>
             );
         }

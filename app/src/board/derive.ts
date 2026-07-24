@@ -216,6 +216,16 @@ export function labelsFor(
             config.priorities.p0, config.priorities.p1, config.priorities.p2, config.priorities.p3
         ].filter((l): l is string => l !== null).map((l) => l.toLowerCase())
         : [];
+    // One pass over issues, not one per label — repos can carry hundreds
+    // of labels against hundreds of issues.
+    const openCounts = new Map<string, number>();
+    for (const issue of issues) {
+        if (issue.state !== 'open') continue;
+        for (const il of issue.labels) {
+            const key = il.name.toLowerCase();
+            openCounts.set(key, (openCounts.get(key) ?? 0) + 1);
+        }
+    }
     return labels
         .filter((l) => !mapped.includes(l.name.toLowerCase()))
         .map((l) => {
@@ -227,7 +237,7 @@ export function labelsFor(
                 key: l.name,
                 name: l.name,
                 hue: hue ?? 0,
-                count: issues.filter((i) => i.state === 'open' && i.labels.some((il) => eqName(il.name, l.name))).length
+                count: openCounts.get(l.name.toLowerCase()) ?? 0
             };
         });
 }

@@ -96,9 +96,13 @@ export const createMissingLabels = serverFn({
                 await gh.createLabel(owner, repo, label);
                 created.push(label.name);
             } catch (err) {
-                // 422 = validation failure; for createLabel that is
-                // "already_exists" — tolerate it, rethrow everything else.
-                if (!(err instanceof GitHubApiError && err.status === 422)) throw err;
+                // Tolerate ONLY the duplicate case — 422 covers other
+                // validation failures too (bad color, name too long), and
+                // those must surface, not read as success.
+                const duplicate = err instanceof GitHubApiError
+                    && err.status === 422
+                    && /already[_ ]exists/i.test(err.message);
+                if (!duplicate) throw err;
             }
         }
         return created;
