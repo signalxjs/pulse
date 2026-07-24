@@ -44,6 +44,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: app
+          # Same major as app/package.json's wrangler — CI and local stay aligned.
+          wranglerVersion: '4.114.0'
           command: d1 migrations apply pulse --remote
 
       - name: Deploy worker
@@ -52,4 +54,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: app
+          wranglerVersion: '4.114.0'
           command: deploy
