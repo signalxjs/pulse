@@ -37,7 +37,7 @@ const BoardPage = component(() => {
     const ui = useBoardUiStore();
     // Title from the initial params — a full navigation to another board
     // remounts the page (per-route-record keying), so setup-time is enough.
-    useHead({ title: `${route.params.owner}/${route.params.repo} — Pulse` });
+    useHead({ title: `${route.params.owner ?? ''}/${route.params.repo ?? ''} — Pulse` });
 
     const params = () => ({ owner: route.params.owner ?? '', repo: route.params.repo ?? '' });
 
@@ -198,7 +198,7 @@ const BoardPage = component(() => {
                             error: (err, retry) => (
                                 <div class="flex h-full flex-col items-center justify-center gap-3">
                                     <span class="text-[12.5px] text-tm">
-                                        Couldn't load the board: {err.message}
+                                        Couldn't load the board: {err instanceof Error ? err.message : String(err)}
                                     </span>
                                     <button
                                         type="button"
