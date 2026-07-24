@@ -12,6 +12,7 @@
 // Real-Chrome UA throughout: HeadlessChrome matches the isBot regex and
 // would get the blocking document instead of the streaming human path.
 import { spawn, spawnSync } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -63,6 +64,10 @@ function startNodeServer() {
 
 function startWorkerd() {
     const env = { ...process.env, WRANGLER_SEND_METRICS: 'false' };
+    // Deterministic every run: wrangler --local persists D1 state across
+    // runs (.wrangler/state), so a previous smoke's saved board config
+    // would break the setup-redirect assertions. Start from nothing.
+    rmSync(new URL('.wrangler/state', import.meta.url), { recursive: true, force: true });
     // Schema first: the worker never applies migrations itself (wrangler
     // owns the schema on this target). --local writes .wrangler/state, the
     // same store `wrangler dev` reads below.
@@ -197,10 +202,14 @@ try {
     // 5b) Repo card → board: a real Link into the LAZY route, still zero
     // document requests (the chunk arrives as a script), and the design
     // tokens are actually applied (computed colors, not just class names).
+    // An unconfigured repo now guards into the setup flow (pulse#40) — the
+    // planner chrome stays up, the content area is the setup form.
     await page.click('[data-repo-grid] a[href^="/b/"]');
     await page.waitForSelector('[data-board-root]', { timeout: 10000 });
     assert(page.url().includes('/b/'), `repo card links into the board route (${page.url()})`);
     assert(docRequests === 0, 'the lazy board route loads client-side (0 document requests)');
+    await page.waitForURL('**/setup', { timeout: 10000 });
+    assert(true, 'an unconfigured board redirects into the setup flow');
     const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     assert(bodyBg === 'rgb(12, 13, 17)', `body paints bg0 (${bodyBg})`);
     const asideBg = await page.evaluate(() =>
@@ -208,6 +217,42 @@ try {
     assert(asideBg === 'rgb(16, 17, 22)', `sidebar paints bg1 (${asideBg})`);
     const sansFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
     assert(sansFont.includes('Hanken Grotesk'), `body uses the handoff UI font (${sansFont})`);
+
+    // 5c) The setup flow end-to-end on the recorded lumen/lumen repo
+    // (pulse#40): detection prefills the mapping form from the repo's
+    // `status: *` / P0–P3 label conventions, Save stores the BoardConfig,
+    // and the board comes back with REAL per-status column counts.
+    await page.goto(`${BASE}/b/lumen/lumen`, { waitUntil: 'load' });
+    await page.waitForURL('**/b/lumen/lumen/setup', { timeout: 10000 });
+    await page.waitForSelector('[data-status-select="todo"]', { timeout: 10000 });
+    const todoMapping = await page.inputValue('[data-status-select="todo"]');
+    assert(todoMapping === 'status: todo', `detection prefills the Todo column mapping (${todoMapping})`);
+    const p0Mapping = await page.inputValue('[data-priority-select="p0"]');
+    assert(p0Mapping === 'P0', `detection prefills the P0 priority mapping (${p0Mapping})`);
+    const milestoneNote = await page.locator('[data-milestone-count]').textContent();
+    assert(milestoneNote.includes('5 milestones'), `the cycle toggle carries the milestone count (${milestoneNote.trim()})`);
+    assert(await page.locator('[data-missing-label]').count() === 0,
+        'lumen carries every convention label — nothing offered for creation');
+    await page.click('[data-setup-save]');
+    await page.waitForURL(`${BASE}/b/lumen/lumen`, { timeout: 10000 });
+    // The board now derives real counts from the issue working set
+    // (fixtures: 6 backlog / 4 todo / 4 in progress / 4 in review / 4 done).
+    await page.waitForFunction(() =>
+        document.querySelector('[data-column="todo"] [data-column-count]')?.textContent === '4',
+    { timeout: 10000 });
+    const countOf = (col) => page.locator(`[data-column="${col}"] [data-column-count]`).textContent();
+    assert(await countOf('backlog') === '6', 'Backlog column counts the labeled fixtures issues');
+    assert(await countOf('inprogress') === '4', 'In Progress column count is derived from status labels');
+    assert(await countOf('done') === '4', 'Done column counts the closed fixtures issues');
+    const sidebarText = await page.locator('[data-board-sidebar]').textContent();
+    assert(sidebarText.includes('good first issue'), 'sidebar lists the repo tag labels (live boardLabels)');
+    assert(sidebarText.includes('mira'), 'sidebar lists the team (live boardPeople)');
+    // Setup revisited WITH a config: no redirect away, prefilled from it.
+    await page.goto(`${BASE}/b/lumen/lumen/setup`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-status-select="done"]', { timeout: 10000 });
+    assert(await page.inputValue('[data-status-select="done"]') === 'status: done',
+        'revisiting setup prefills from the stored config');
+
     // Back to the dashboard for the sign-out flow below.
     await page.goto(`${BASE}/`, { waitUntil: 'load' });
     await page.waitForSelector('[data-repo-grid]', { timeout: 10000 });

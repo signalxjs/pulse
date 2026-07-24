@@ -246,6 +246,28 @@ notes on the adapter itself:
   `INEFFECTIVE_DYNAMIC_IMPORT` warning — the fn registry dynamically
   imports `repos.server.ts`, which the Dashboard also imports statically.
 
+### F15 — streamed `$SIGX_REPLACE` regions break the hydrated tree: next patch crashes with `parentNode` of null (R1 · core#478)
+Hit building the board's config-guard read (pulse#40). A `useData` cell
+that settles DURING streaming SSR makes the renderer emit a
+component-level `$SIGX_REPLACE(id, html)` patch (both for bare `.value`
+reads and `match()`-arm reads). The replaced region hydrates without a
+visible error, but the hydrated component's vnodes are left without DOM
+references — the NEXT reactive patch (any client-side navigation, a cell
+state change) crashes in runtime-core's patch with
+`TypeError: Cannot read properties of null (reading 'parentNode')`, and
+the app wedges. Reproduced on the production build and the dev server;
+the Dashboard's replaces survive only because nothing repatches its page
+component afterwards (navigating away unmounts at the RouterView
+boundary). Two adjacent gaps while diagnosing: (a) a cell whose fetched
+VALUE is `null` (a legitimate "not found" read) is indistinguishable from
+"no data" in the `__SIGX_ASYNC__` transfer — Pulse wraps such results in
+an object; (b) neither a mutation's definition-level `invalidates` nor
+`useAction`'s `cache.invalidates` (pack installed via `cachePlugin()`)
+triggered a refetch of a mounted custom-tuple-keyed read — Pulse works
+around with an explicit `cell.refresh()` after the mutation. Board reads
+are `server: false` for now (SSR ships the static shell; the client
+fetches), which sidesteps the REPLACE path entirely.
+
 ## Working notes
 
 - The router-SSR contract (core docs/router-ssr-contract.md) held on first
