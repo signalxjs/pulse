@@ -19,12 +19,12 @@ export const Toasts = component(() => {
                     role="status"
                     aria-live="polite"
                     class={
-                        'flex animate-toast-in items-center gap-2 whitespace-nowrap rounded-[10px] border border-bds ' +
+                        'flex max-w-[min(90vw,26rem)] animate-toast-in items-center gap-2 rounded-[10px] border border-bds ' +
                         'bg-bg3 px-4 py-[11px] text-[12.5px] text-tx shadow-[0_12px_34px_rgba(0,0,0,.4)]'
                     }
                 >
                     <span class="size-[7px] shrink-0 rounded-full bg-ac" />
-                    {t.message}
+                    <span class="min-w-0">{t.message}</span>
                 </div>
             ))}
         </div>

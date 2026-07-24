@@ -99,17 +99,19 @@ export const useBoardUiStore = defineStore('boardUi', (ctx) => {
          * action safe to call anywhere.
          */
         showToast(message: string, ms: number = TOAST_MS) {
+            // Browser-only: a toast enqueued under SSR would have no timer to
+            // clear it (the queue would stick), and nothing paints it there
+            // anyway — so never touch the queue off-window.
+            if (typeof window === 'undefined') return;
             const id = ++toastSeq;
             patch((s) => {
                 s.toasts = [...s.toasts, { id, message }];
             });
-            if (typeof window !== 'undefined') {
-                setTimeout(() => {
-                    patch((s) => {
-                        s.toasts = s.toasts.filter((t) => t.id !== id);
-                    });
-                }, ms);
-            }
+            setTimeout(() => {
+                patch((s) => {
+                    s.toasts = s.toasts.filter((t) => t.id !== id);
+                });
+            }, ms);
         },
         setDensity(density: Density) {
             patch((s) => {
