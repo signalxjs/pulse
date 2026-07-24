@@ -41,6 +41,9 @@ const BoardPage = component(() => {
 
     const params = () => ({ owner: route.params.owner ?? '', repo: route.params.repo ?? '' });
 
+    /** The single pending setup-redirect tick (null = none queued). */
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+
     // The config guard's read: config null = no board yet → setup. The
     // fetcher WRAPS the null-able result in an object on purpose — a cell
     // value of null is indistinguishable from "no data" in the SSR
@@ -82,7 +85,11 @@ const BoardPage = component(() => {
         if (import.meta.env.SSR) return;
         if (route.params.view === 'setup') return;
         if (cfg.state === 'ready' && cfg.value?.config === null) {
-            setTimeout(() => {
+            // ONE pending redirect at a time — reactive re-runs while the
+            // repo stays unconfigured must not queue duplicate replaces.
+            if (redirectTimer !== null) return;
+            redirectTimer = setTimeout(() => {
+                redirectTimer = null;
                 // Re-check — a save/navigation may have raced the tick.
                 if (cfg.state === 'ready' && cfg.value?.config === null && route.params.view !== 'setup') {
                     const { owner, repo } = params();

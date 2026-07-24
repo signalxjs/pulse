@@ -255,12 +255,18 @@ export function peopleFor(
     collaborators: readonly GitHubPerson[],
     issues: readonly GitHubIssue[]
 ): BoardPerson[] {
+    // One pass over issues, like labelsFor — never O(people × issues).
+    const assigned = new Map<string, number>();
+    for (const issue of issues) {
+        if (issue.state !== 'open') continue;
+        for (const a of issue.assignees) {
+            assigned.set(a.login, (assigned.get(a.login) ?? 0) + 1);
+        }
+    }
     return collaborators.map((p) => ({
         name: p.login,
         initials: initialsOf(p.login),
         hue: personHue(p.login),
-        count: issues.filter(
-            (i) => i.state === 'open' && i.assignees.some((a) => a.login === p.login)
-        ).length
+        count: assigned.get(p.login) ?? 0
     }));
 }
