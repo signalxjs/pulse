@@ -97,8 +97,10 @@ export function createFixturesClient() {
                 // Same order the live endpoint serves: sort=updated, desc.
                 .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
 
-            const perPage = opts.perPage ?? 100;
-            const page = opts.page ?? 1;
+            // Clamp to GitHub's paging contract (page >= 1, 1..100 per
+            // page) so fixtures never diverge from the live endpoint.
+            const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage ?? 100)));
+            const page = Math.max(1, Math.floor(opts.page ?? 1));
             const start = (page - 1) * perPage;
             return {
                 items: filtered.slice(start, start + perPage),

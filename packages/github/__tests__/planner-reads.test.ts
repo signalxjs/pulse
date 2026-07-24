@@ -66,6 +66,18 @@ describe('createLiveClient — repoIssues paging', () => {
         expect(calls[0]!.url).toContain('per_page=100');
     });
 
+    it('treats a malformed next-URL (no numeric page param) as the last page', async () => {
+        const { stub } = fetchStub([{
+            status: 200,
+            body: [RAW_ISSUE],
+            etag: 'W/"p1"',
+            headers: { link: '<https://api.github.com/repos/o/r/issues?cursor=abc>; rel="next"' }
+        }]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        const page = await gh.repoIssues('o', 'r');
+        expect(page.nextPage).toBeNull();
+    });
+
     it('passes state/page/labels/milestone/since through to the query', async () => {
         const { stub, calls } = fetchStub([{ status: 200, body: [], etag: '"x"' }]);
         const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
@@ -235,6 +247,15 @@ describe('fixtures adapter — planner dataset', () => {
         expect(p3.nextPage).toBeNull();
         const all = [...p1.items, ...p2.items, ...p3.items].map((i) => i.number);
         expect(new Set(all).size).toBe(22);
+    });
+
+    it('clamps out-of-contract paging (page < 1, perPage > 100) like the live endpoint', async () => {
+        const zeroPage = await gh.repoIssues('lumen', 'lumen', { page: 0, perPage: 10 });
+        const firstPage = await gh.repoIssues('lumen', 'lumen', { page: 1, perPage: 10 });
+        expect(zeroPage.items.map((i) => i.number)).toEqual(firstPage.items.map((i) => i.number));
+        const oversized = await gh.repoIssues('lumen', 'lumen', { perPage: 500 });
+        expect(oversized.items).toHaveLength(22);
+        expect(oversized.nextPage).toBeNull();
     });
 
     it('filters by state, labels and milestone', async () => {

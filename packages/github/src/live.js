@@ -71,8 +71,10 @@ function nextPageOf(linkHeader) {
     if (!linkHeader) return null;
     const match = /<([^>]+)>\s*;\s*rel="next"/.exec(linkHeader);
     if (!match) return null;
-    const page = new URL(match[1]).searchParams.get('page');
-    return page ? Number(page) : null;
+    // A malformed next URL (no numeric page param) must read as "last
+    // page", never leak NaN into the cached envelope.
+    const page = Number(new URL(match[1]).searchParams.get('page'));
+    return Number.isInteger(page) && page > 0 ? page : null;
 }
 
 /**
