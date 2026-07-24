@@ -19,7 +19,11 @@ import { applyMigrations, splitStatements } from '@pulse/db/migrate';
 const APP_MIGRATIONS = join(process.cwd(), 'app', 'migrations');
 
 const tempRoots: string[] = [];
+const openDbs: { close(): void }[] = [];
 afterAll(() => {
+    // Release sqlite file handles BEFORE removing their directories —
+    // Windows refuses to delete files that are still open.
+    for (const db of openDbs) db.close();
     for (const dir of tempRoots) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -111,7 +115,11 @@ function conformance(name: string, makeDb: () => PulseDb) {
 }
 
 conformance('sqlite (:memory:)', () => createSqliteDb());
-conformance('sqlite (file)', () => createSqliteDb(join(tempDir(), 'pulse.db')));
+conformance('sqlite (file)', () => {
+    const db = createSqliteDb(join(tempDir(), 'pulse.db'));
+    openDbs.push(db);
+    return db;
+});
 conformance('d1 driver over a D1-shaped stub', () => createD1Db(d1Stub()));
 
 describe('splitStatements', () => {

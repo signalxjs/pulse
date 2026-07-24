@@ -47,6 +47,10 @@ export function createSqliteDb(dbPath = ':memory:') {
                 db.exec('ROLLBACK');
                 throw err;
             }
+        },
+        close() {
+            cache.clear();
+            db.close();
         }
     };
 }
