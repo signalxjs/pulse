@@ -94,11 +94,11 @@ export const issueDetail = serverFn({
         timeline: GitHubTimelineEvent[];
     }> {
         const { gh } = authed(rq);
-        const [issue, timeline] = await Promise.all([
-            gh.issue(owner, repo, number),
-            gh.issueTimeline(owner, repo, number)
-        ]);
-        return { issue: issue ?? null, timeline: issue ? timeline : [] };
+        // Issue first, timeline only when it exists — a missing issue must
+        // not spend a second request of the rate-limit budget.
+        const issue = await gh.issue(owner, repo, number);
+        if (!issue) return { issue: null, timeline: [] };
+        return { issue, timeline: await gh.issueTimeline(owner, repo, number) };
     }
 });
 
