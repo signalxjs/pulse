@@ -20,6 +20,8 @@ type AvatarProps =
  */
 export const Avatar = component<AvatarProps>(({ props }) => () => (
     <span
+        role="img"
+        aria-label={props.login}
         title={props.login}
         class={
             'flex shrink-0 items-center justify-center rounded-full font-mono text-[9px] font-medium text-white ' +
