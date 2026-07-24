@@ -138,8 +138,8 @@ async function createServer() {
         // lazy route (pulse#39), so board documents preload its chunk (+
         // transitive statics/CSS) alongside the entry's assets — computed
         // once here, chosen per request via the function-form `document`.
-        const entryAssets = collectAssets(manifest, []);
-        const boardAssets = collectAssets(manifest, ['src/board/BoardPage.tsx']);
+        const entryAssets = collectAssets(manifest, ['src/entry-client.tsx']);
+        const boardAssets = collectAssets(manifest, ['src/entry-client.tsx', 'src/board/BoardPage.tsx']);
         app.use(createRequestHandler({
             template,
             // The factory's second parameter is this request's context
