@@ -123,7 +123,10 @@ const BoardPage = component(() => {
     const closeDetail = () => {
         const query = { ...route.query };
         delete query.issue;
-        void router.push({ path: route.path, query });
+        // REPLACE, not push: opening pushed the ?issue entry, so replacing
+        // it on close means Back returns to the pre-open state instead of
+        // re-opening the panel (the "back-button closes" contract).
+        void router.replace({ path: route.path, query });
     };
 
     // ---- New-issue modal (pulse#54): local state — nothing else reads it.

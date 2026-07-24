@@ -50,10 +50,18 @@ export const CommandPalette = component<CommandPaletteProps>(({ props }) => {
     };
     const copyLink = () => {
         ui.closePalette();
-        // Clipboard access can be denied (permissions, insecure context) —
-        // the toast still confirms the intent; the failure is non-fatal.
-        void navigator.clipboard?.writeText(location.origin + base()).catch(() => { /* denied */ });
-        ui.showToast('Board link copied');
+        // Clipboard is absent in insecure contexts and can be permission-
+        // denied — confirm only on success, report the failure otherwise
+        // (and never let a missing API throw: guard before calling).
+        const link = location.origin + base();
+        if (!navigator.clipboard) {
+            ui.showToast('Clipboard unavailable — copy from the address bar');
+            return;
+        }
+        navigator.clipboard.writeText(link).then(
+            () => ui.showToast('Board link copied'),
+            () => ui.showToast("Couldn't copy the board link")
+        );
     };
 
     return () => {

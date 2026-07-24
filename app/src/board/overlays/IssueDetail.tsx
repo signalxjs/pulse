@@ -128,8 +128,11 @@ export const IssueDetail = component<IssueDetailProps>(({ props }) => {
                         <span class="flex" style={`color:${PR_COLOR}`}><IconPr /></span>
                         <span class="font-mono text-xs text-tm">PR #{pr.number}</span>
                         <span class="min-w-0 flex-1 truncate text-[12.5px] text-tx">{pr.title}</span>
+                        {/* Neutral "linked" — the timeline cross-reference
+                            carries no PR state, so claiming "open" would be
+                            wrong for a merged/closed PR. */}
                         <span class="rounded-full border border-[oklch(0.7_0.15_285_/_0.3)] bg-[oklch(0.7_0.15_285_/_0.14)] px-2 py-[2px] text-[10.5px] text-[oklch(0.8_0.12_285)]">
-                            open
+                            linked
                         </span>
                     </div>
                 )}
