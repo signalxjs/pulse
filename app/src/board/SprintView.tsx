@@ -29,10 +29,15 @@ const DAY = 86_400_000;
 export const SprintView = component<SprintViewProps>(({ props }) => () => {
     const cycle = currentCycle(props.cycles);
     if (cycle === null) {
+        const disabled = props.config.cycleSource === 'none';
         return (
             <div class="flex h-full items-center justify-center">
                 <span class="text-[11.5px] text-tf">
-                    {props.loading ? 'Loading cycles…' : 'No active cycle — assign issues to a milestone'}
+                    {props.loading
+                        ? 'Loading cycles…'
+                        : disabled
+                            ? 'Cycles are off — enable milestones as cycles in setup to plan sprints'
+                            : 'No active cycle — give a milestone a due date in the current window'}
                 </span>
             </div>
         );

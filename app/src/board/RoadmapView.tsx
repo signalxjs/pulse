@@ -36,10 +36,15 @@ const DAY = 86_400_000;
 export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
     const cycles = props.cycles;
     if (cycles.length === 0) {
+        const disabled = props.config.cycleSource === 'none';
         return (
             <div class="flex h-full items-center justify-center">
                 <span class="text-[11.5px] text-tf">
-                    {props.loading ? 'Loading cycles…' : 'No cycles — milestones with due dates appear here'}
+                    {props.loading
+                        ? 'Loading cycles…'
+                        : disabled
+                            ? 'Cycles are off — enable milestones as cycles in setup to see the roadmap'
+                            : 'No cycles — milestones with due dates appear here'}
                 </span>
             </div>
         );
