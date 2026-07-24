@@ -39,8 +39,9 @@ export const SprintView = component<SprintViewProps>(({ props }) => () => {
     }
     const config = props.config;
     const stats = sprintStats(props.issues, config, cycle);
-    // Whole days until the cycle's due date, floored at 0 — an overdue
-    // cycle reads "0 days left", never a negative.
+    // Days until the cycle's due date, rounding a partial day UP (a cycle
+    // due in 2 hours still reads "1 day left", not "0"), floored at 0 so an
+    // overdue cycle reads "0 days left" rather than a negative.
     const daysLeft = Math.max(0, Math.ceil((Date.parse(cycle.end) - Date.now()) / DAY));
     const scoped = props.issues.filter((i) => i.milestone?.number === cycle.number);
     const lanes = [
@@ -77,7 +78,7 @@ export const SprintView = component<SprintViewProps>(({ props }) => () => {
                         class="rounded-full border px-2.5 py-[3px] text-[11.5px] font-semibold"
                         style="background:oklch(0.72 0.15 65 / 0.14);border-color:oklch(0.72 0.15 65 / 0.3);color:oklch(0.82 0.12 65)"
                     >
-                        {daysLeft} days left
+                        {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
                     </span>
                     <div class="flex-1" />
                     <span data-sprint-pct class="font-mono text-[12px] text-tm">{stats.pctComplete}% complete</span>

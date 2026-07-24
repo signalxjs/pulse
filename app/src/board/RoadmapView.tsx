@@ -68,9 +68,11 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                 const hue = STATE_HUE[c.state];
                 const slot = roadmapSlot(c, windowStart);
                 const frac = roadmapEndFraction(c, windowStart);
-                const progress = c.state === 'done'
-                    ? 100
-                    : inCycle.length === 0 ? 0 : Math.round((done / inCycle.length) * 100);
+                // Always the true done/total fraction so the fill can never
+                // disagree with the label — a milestone can be closed on
+                // GitHub while still holding open issues (bar and "2/14"
+                // must tell the same story).
+                const progress = inCycle.length === 0 ? 0 : Math.round((done / inCycle.length) * 100);
                 return (
                     <div
                         key={c.number}
