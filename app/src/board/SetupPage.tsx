@@ -181,7 +181,7 @@ export const SetupPage = component<SetupPageProps>(({ props }) => {
                 {/* A stored mapping whose label has since been deleted or
                     renamed must stay visible (and selected) — silently
                     showing the first option would misreport the config. */}
-                {value !== '' && !labelOptions.includes(value) && (
+                {value !== '' && !labelOptions.some((n) => n.toLowerCase() === value.toLowerCase()) && (
                     <option value={value} selected>{value} (missing from repo)</option>
                 )}
             </select>
