@@ -62,3 +62,36 @@ export function createAuthHandler(options: AuthHandlerOptions): (request: Reques
  * structural request ({ headers: { cookie } }).
  */
 export function getSession(source: string | null | undefined | { headers: { cookie?: string } }, sessions: SessionStore, secret: string): Promise<Session | null>;
+
+/**
+ * Same-origin relative paths only — an absolute or protocol-relative
+ * `returnTo`, one carrying control characters (CR/LF header injection), or
+ * one over 1 KB collapses to '/'. Exported so the `form: true` sign-in
+ * server function validates the redirect target with the SAME rule the
+ * OAuth flow uses.
+ */
+export function safeReturnTo(value: unknown): string;
+
+/** A sign-in failure carrying the HTTP status the caller maps to a response. */
+export class SignInError extends Error {
+    readonly status: number;
+    constructor(status: number, message: string);
+}
+
+/**
+ * PAT sign-in primitive shared by the `/auth/pat` JSON route and the
+ * `form: true` `submitPat` server function: validate the token, prove it by
+ * fetching the viewer, create a session, and return the signed session
+ * `Set-Cookie` value. Throws {@link SignInError} (status 400/401/502) on
+ * failure. Fixtures mode is tokenless and stores the literal `'fixtures'`
+ * token.
+ */
+export function signInWithPat(args: {
+    sessions: SessionStore;
+    secret: string;
+    fixtures: boolean;
+    makeClient(token: string): GitHubClient;
+    token: string;
+    /** Set the Secure attribute on the issued cookie. Default false. */
+    secureCookies?: boolean;
+}): Promise<{ cookie: string; user: SessionUser }>;

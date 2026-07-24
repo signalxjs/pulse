@@ -1,19 +1,22 @@
 import { component, useHead } from 'sigx';
 import { useQuery, Link } from '@sigx/router';
 import { useSessionStore } from '../stores/session';
+import { LoginForm } from './login/LoginForm.resume';
 
 /**
  * Sign in — GitHub OAuth when the server has an OAuth app configured
  * (/auth/login redirects), with a PAT fallback for local dev. In fixtures
  * mode the PAT form accepts anything and grants the fixtures viewer.
+ *
+ * The shell (OAuth anchor, session state, router Links) hydrates normally;
+ * the PAT `<form>` is a resume boundary (`LoginForm.resume.tsx`) that ships
+ * zero JS on load and works as a native `form: true` POST with JS off
+ * (pulse#57).
  */
-export const Login = component((ctx) => {
+export const Login = component(() => {
     useHead({ title: 'Sign in — Pulse' });
     const query = useQuery();
     const session = useSessionStore();
-    const token = ctx.signal<string>('');
-    const error = ctx.signal('');
-    const pending = ctx.signal(false);
 
     const returnTo = () => {
         const value = query.returnTo;
@@ -25,29 +28,6 @@ export const Login = component((ctx) => {
         }
         return target;
     };
-
-    async function signInWithPat(e: Event) {
-        e.preventDefault();
-        pending.value = true;
-        error.value = '';
-        try {
-            const res = await fetch('/auth/pat', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ token: token.value })
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                error.value = body.error ?? `sign-in failed (${res.status})`;
-                return;
-            }
-            window.location.href = returnTo();
-        } catch {
-            error.value = 'network error — is the server reachable?';
-        } finally {
-            pending.value = false;
-        }
-    }
 
     return () => (
         <div class="flex justify-center pt-16">
@@ -83,25 +63,10 @@ export const Login = component((ctx) => {
                         {query.pat === '1' && (
                             <p class="text-[11px] text-tf">OAuth isn't configured on this server — sign in with a token.</p>
                         )}
-                        <form class="w-full space-y-2" onSubmit={signInWithPat}>
-                            {/* Two-way: the sigx vite transform compiles
-                                the model getter into a get/set pair —
-                                verified: typed input reaches the POST. */}
-                            <input
-                                class="w-full rounded-lg border border-bd bg-bg2 px-2.5 py-2 text-[12.5px] text-tx outline-none placeholder:text-tf focus:border-ac"
-                                type="password"
-                                placeholder="GitHub personal access token"
-                                model={() => token.value}
-                            />
-                            <button
-                                class="w-full cursor-pointer rounded-lg border border-bd bg-bg2 px-3 py-2 text-[12.5px] font-semibold text-tm hover:border-bds hover:text-tx disabled:opacity-60"
-                                type="submit"
-                                disabled={pending.value}
-                            >
-                                {pending.value ? 'Signing in…' : 'Sign in with token'}
-                            </button>
-                        </form>
-                        {error.value && <p class="text-[12px] text-[oklch(0.72_0.16_25)]">{error.value}</p>}
+                        {/* The PAT form is a resume boundary: zero JS on
+                            load, native `form: true` POST with JS off, RPC
+                            upgrade with JS on (pulse#57). */}
+                        <LoginForm returnTo={returnTo()} />
                     </>
                 )}
             </div>

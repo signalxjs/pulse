@@ -91,7 +91,7 @@ function init(env: Env): Handlers {
     // The service registry server functions reach for at request time —
     // the SAME shape server.mjs publishes (src/server/services.server.ts is
     // the typed accessor); the `use:` chain (withAuth) reads it per call.
-    globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret };
+    globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret, secureCookies };
 
     const auth = createAuthHandler({
         sessions, secret, fixtures, makeClient: makeGitHubClient, oauth, secureCookies

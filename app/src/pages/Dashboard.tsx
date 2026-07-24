@@ -2,6 +2,7 @@ import { component, useData, useHead } from 'sigx';
 import { Link } from '@sigx/router';
 import { viewerOrgs, viewerRepos } from '../server/repos.server';
 import { useSessionStore } from '../stores/session';
+import { RepoFilter } from './dashboard/RepoFilter.resume';
 
 /**
  * The org/repo picker — the signed-in landing page. Data flows through
@@ -12,6 +13,11 @@ import { useSessionStore } from '../stores/session';
  * stubs — on later navigations. Repo cards are the board entry points:
  * each links to /b/:owner/:repo (pulse#39). Link keeps the custom class —
  * F4 (router#30, Link dropping `class`) is fixed in @sigx/router 0.10.
+ *
+ * The repo filter above the grid is a resume boundary
+ * (`RepoFilter.resume.tsx`): zero JS on load, woken on the first keystroke
+ * to filter the (still-hydrated) grid via each card's `data-repo-search`
+ * haystack (pulse#57).
  */
 export const Dashboard = component(() => {
     useHead({ title: 'Pulse — your repos' });
@@ -66,34 +72,44 @@ export const Dashboard = component(() => {
                     </div>
                 ),
                 ready: (list) => (
-                    <div class="grid grid-cols-1 gap-3.5 md:grid-cols-2 lg:grid-cols-3" data-repo-grid>
-                        {/* Note: Link forwards only its typed props
-                            (class/style survive — F4 fixed in router 0.10 —
-                            but data-* attributes are dropped), so the smoke
-                            targets `a[href^="/b/"]`. */}
-                        {list.map((repo) => (
-                            <Link
-                                to={`/b/${repo.owner}/${repo.name}`}
-                                key={repo.fullName}
-                                class="group flex flex-col gap-2 rounded-[10px] border border-bd bg-bg2 p-3.5 text-tx transition-colors duration-100 hover:border-bds hover:bg-bg3 hover:text-tx"
-                            >
-                                <span class="flex items-center gap-2">
-                                    <span class="truncate text-[13px] font-semibold">{repo.name}</span>
-                                    {repo.private && (
-                                        <span class="rounded-full border border-bd px-2 py-px text-[10.5px] text-tf">private</span>
-                                    )}
-                                </span>
-                                <span class="line-clamp-2 min-h-10 text-[12.5px] leading-[1.4] text-tm">
-                                    {repo.description ?? 'No description'}
-                                </span>
-                                <span class="flex items-center justify-between">
-                                    <span class="rounded-full border border-[oklch(0.62_0.14_285_/_0.3)] bg-[oklch(0.62_0.14_285_/_0.15)] px-2 py-px font-mono text-[10.5px] text-[oklch(0.82_0.11_285)]">
-                                        {repo.openIssues} open issues
-                                    </span>
-                                    <span class="text-[11px] text-tf transition-colors group-hover:text-tm">open board →</span>
-                                </span>
-                            </Link>
-                        ))}
+                    <div class="space-y-4">
+                        <RepoFilter total={list.length} />
+                        <div class="grid grid-cols-1 gap-3.5 md:grid-cols-2 lg:grid-cols-3" data-repo-grid>
+                            {/* The wrapper carries the filter attrs: Link
+                                forwards only typed props (class/style survive —
+                                F4 fixed in router 0.10 — but data-* is
+                                dropped), so `data-repo-card`/`data-repo-search`
+                                live on the grid cell and the smoke targets
+                                `a[href^="/b/"]` for the Link itself. */}
+                            {list.map((repo) => (
+                                <div
+                                    data-repo-card
+                                    data-repo-search={`${repo.name} ${repo.description ?? ''}`.toLowerCase()}
+                                    key={repo.fullName}
+                                >
+                                    <Link
+                                        to={`/b/${repo.owner}/${repo.name}`}
+                                        class="group flex h-full flex-col gap-2 rounded-[10px] border border-bd bg-bg2 p-3.5 text-tx transition-colors duration-100 hover:border-bds hover:bg-bg3 hover:text-tx"
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <span class="truncate text-[13px] font-semibold">{repo.name}</span>
+                                            {repo.private && (
+                                                <span class="rounded-full border border-bd px-2 py-px text-[10.5px] text-tf">private</span>
+                                            )}
+                                        </span>
+                                        <span class="line-clamp-2 min-h-10 text-[12.5px] leading-[1.4] text-tm">
+                                            {repo.description ?? 'No description'}
+                                        </span>
+                                        <span class="flex items-center justify-between">
+                                            <span class="rounded-full border border-[oklch(0.62_0.14_285_/_0.3)] bg-[oklch(0.62_0.14_285_/_0.15)] px-2 py-px font-mono text-[10.5px] text-[oklch(0.82_0.11_285)]">
+                                                {repo.openIssues} open issues
+                                            </span>
+                                            <span class="text-[11px] text-tf transition-colors group-hover:text-tm">open board →</span>
+                                        </span>
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )
             })}

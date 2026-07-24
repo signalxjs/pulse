@@ -15,6 +15,7 @@
     "dependencies": {
         "sigx": "catalog:",
         "@sigx/reactivity": "catalog:",
+        "@sigx/resume": "catalog:",
         "@sigx/runtime-core": "catalog:",
         "@sigx/runtime-dom": "catalog:",
         "@sigx/server": "catalog:",

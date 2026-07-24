@@ -16,6 +16,7 @@
  * - POST /logout    → destroy session, clear cookie.
  */
 import { sign, verify, readCookie, cookieHeader, SESSION_COOKIE, STATE_COOKIE } from './cookies.js';
+import { signInWithPat, SignInError } from './pat.js';
 
 const GITHUB_AUTHORIZE = 'https://github.com/login/oauth/authorize';
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
@@ -29,7 +30,7 @@ const BODY_LIMIT = 4096;
  * redirect, and control characters (CR/LF) would inject headers when the
  * value round-trips through the state cookie into a Location header.
  */
-function safeReturnTo(value) {
+export function safeReturnTo(value) {
     if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/';
     // eslint-disable-next-line no-control-regex
     if (/[\u0000-\u001f\u007f]/.test(value)) return '/';
@@ -227,19 +228,18 @@ export function createAuthHandler(options) {
             }
             const parsed = await readJsonBody(request);
             if (parsed.error) return parsed.error;
-            const token = typeof parsed.body?.token === 'string' ? parsed.body.token.trim() : '';
-            if (!fixtures && !token) {
-                return jsonResponse(400, { error: 'a token is required' });
-            }
-            // Fixtures mode: tokenless deterministic sign-in (CI smokes).
-            // Live: the PAT proves itself by fetching the viewer.
-            const client = makeClient(fixtures ? 'fixtures' : token);
-            const user = await client.viewer();
-            const sid = await sessions.create(user, fixtures ? 'fixtures' : token);
-            return jsonResponse(200, { ok: true, user }, [await sessionCookie(sid)]);
+            const token = typeof parsed.body?.token === 'string' ? parsed.body.token : '';
+            // The shared primitive (pulse#57): the SAME token→viewer→session
+            // →cookie path the `form: true` `submitPat` server fn uses.
+            const { cookie, user } = await signInWithPat({
+                sessions, secret, fixtures, makeClient, token, secureCookies
+            });
+            return jsonResponse(200, { ok: true, user }, [cookie]);
         } catch (err) {
-            const status = /** @type {any} */ (err)?.status === 401 ? 401 : 502;
-            return jsonResponse(status, { error: status === 401 ? 'invalid token' : 'sign-in failed' });
+            if (err instanceof SignInError) {
+                return jsonResponse(err.status, { error: err.message });
+            }
+            return jsonResponse(502, { error: 'sign-in failed' });
         }
     }
 

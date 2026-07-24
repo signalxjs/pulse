@@ -20,6 +20,7 @@ catalog:
   "@sigx/cache": ^0.13.0
   "@sigx/cloudflare": ^0.13.0
   "@sigx/reactivity": ^0.13.0
+  "@sigx/resume": ^0.13.0
   "@sigx/runtime-core": ^0.13.0
   "@sigx/runtime-dom": ^0.13.0
   "@sigx/server": ^0.13.0
