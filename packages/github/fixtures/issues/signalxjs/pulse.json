@@ -1,0 +1,96 @@
+[
+  {
+    "number": 12,
+    "title": "Planner board: drag-and-drop between status columns",
+    "body": "Cards should move between status columns and write the matching `status:` label back through the client.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "pulse-dev",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 2,
+      "title": "M2 — planner"
+    },
+    "comments": 1,
+    "author": {
+      "login": "pulse-dev",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+    },
+    "createdAt": "2026-07-10T09:00:00Z",
+    "updatedAt": "2026-07-21T14:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/signalxjs/pulse/issues/12"
+  },
+  {
+    "number": 9,
+    "title": "SSR hydration mismatch on repo list timestamps",
+    "body": "Relative timestamps rendered on the server drift from the client render — hydrate from the absolute value instead.",
+    "state": "closed",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      }
+    ],
+    "assignees": [
+      {
+        "login": "pulse-dev",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "M1 — foundations"
+    },
+    "comments": 2,
+    "author": {
+      "login": "pulse-dev",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+    },
+    "createdAt": "2026-06-20T10:00:00Z",
+    "updatedAt": "2026-06-28T16:00:00Z",
+    "closedAt": "2026-06-28T16:00:00Z",
+    "htmlUrl": "https://github.com/signalxjs/pulse/issues/9"
+  },
+  {
+    "number": 14,
+    "title": "Document the fixtures workflow",
+    "body": "How to refresh recordings, and how the generated fixtures-data module keeps the adapter fs-free.",
+    "state": "open",
+    "isPr": false,
+    "draft": false,
+    "labels": [
+      {
+        "name": "documentation",
+        "color": "0075ca",
+        "description": "Improvements or additions to documentation"
+      }
+    ],
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "author": {
+      "login": "pulse-dev",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/0?v=4"
+    },
+    "createdAt": "2026-07-15T11:00:00Z",
+    "updatedAt": "2026-07-15T11:00:00Z",
+    "closedAt": null,
+    "htmlUrl": "https://github.com/signalxjs/pulse/issues/14"
+  }
+]

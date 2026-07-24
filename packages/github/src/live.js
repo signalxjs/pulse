@@ -7,6 +7,7 @@
  * what lets Pulse browse comfortably inside the 5000/h authenticated
  * budget.
  */
+import { clampPaging } from './paging.js';
 
 /** Error carrying the GitHub status; `rateLimited` marks 403/429 budget exhaustion. */
 export class GitHubApiError extends Error {
@@ -36,24 +37,70 @@ function isRateLimited(res) {
 }
 
 /**
+ * Build the GitHubApiError for a non-ok response. The body's message tells
+ * rate-limit 403s apart from plain permission 403s when the headers alone
+ * don't (secondary limits sometimes ship neither budget header).
+ * @param {Response} res
+ * @param {string} path
+ */
+async function toApiError(res, path) {
+    let message = '';
+    try {
+        message = JSON.parse(await res.text())?.message ?? '';
+    } catch {
+        // Non-JSON error body — the status alone will have to do.
+    }
+    return new GitHubApiError(
+        `GitHub ${res.status} for ${path}${message ? `: ${message}` : ''}`,
+        res.status,
+        isRateLimited(res) || /rate limit/i.test(message)
+    );
+}
+
+/** Timeline event types the planner renders; everything else is dropped. */
+const TIMELINE_EVENTS = new Set([
+    'labeled', 'unlabeled', 'assigned', 'closed', 'reopened',
+    'commented', 'cross-referenced', 'merged', 'committed'
+]);
+
+/**
+ * The rel="next" page number out of a Link header, or null on the last page.
+ * @param {string | null} linkHeader
+ * @returns {number | null}
+ */
+function nextPageOf(linkHeader) {
+    if (!linkHeader) return null;
+    const match = /<([^>]+)>\s*;\s*rel="next"/.exec(linkHeader);
+    if (!match) return null;
+    // A malformed next URL (unparseable, or no numeric page param) must
+    // read as "last page", never leak NaN or a throw into the caller.
+    try {
+        const page = Number(new URL(match[1]).searchParams.get('page'));
+        return Number.isInteger(page) && page > 0 ? page : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * @param {import('./index.js').LiveClientOptions} options
  * @returns {import('./index.js').GitHubClient}
  */
 export function createLiveClient(options) {
     if (!options?.token) {
         // Fail at construction, not as a baffling 401 with 'Bearer undefined'.
-        throw new Error('createLiveClient: a token is required (use createFixturesClient for tokenless mode)');
+        throw new Error("createLiveClient: a token is required (use createFixturesClient from '@pulse/github/fixtures' for tokenless mode)");
     }
     const baseUrl = (options.baseUrl ?? 'https://api.github.com').replace(/\/$/, '');
     const doFetch = options.fetch ?? fetch;
     const cache = options.etagCache;
 
     /**
-     * GET a REST path with conditional-request caching.
+     * Perform one conditional GET. Returns the raw Response plus the cache
+     * entry that supplied the If-None-Match validator (if any).
      * @param {string} path
-     * @returns {Promise<any>}
      */
-    async function cachedGet(path) {
+    async function conditionalGet(path) {
         const url = `${baseUrl}${path}`;
         const cached = cache?.get(url);
         /** @type {Record<string, string>} */
@@ -67,6 +114,16 @@ export function createLiveClient(options) {
         if (cached) headers['if-none-match'] = cached.etag;
 
         const res = await doFetch(url, { headers });
+        return { url, res, cached };
+    }
+
+    /**
+     * GET a REST path with conditional-request caching.
+     * @param {string} path
+     * @returns {Promise<any>}
+     */
+    async function cachedGet(path) {
+        const { url, res, cached } = await conditionalGet(path);
 
         if (res.status === 304 && cached) {
             return JSON.parse(cached.body);
@@ -75,16 +132,69 @@ export function createLiveClient(options) {
             return null;
         }
         if (!res.ok) {
-            throw new GitHubApiError(
-                `GitHub ${res.status} for ${path}`,
-                res.status,
-                isRateLimited(res)
-            );
+            throw await toApiError(res, path);
         }
         const body = await res.text();
         const etag = res.headers.get('etag');
         if (etag && cache) cache.set(url, etag, body);
         return JSON.parse(body);
+    }
+
+    /**
+     * GET one page of a paginated listing. The Link header only exists on
+     * the 200 response, so the `{items, nextPage}` envelope (not the raw
+     * body) is what the cache stores — a later 304 reconstructs the page
+     * WITH its paging cursor. 404 → null (missing repo, not an empty list).
+     * @param {string} path
+     * @returns {Promise<{ items: any[], nextPage: number | null } | null>}
+     */
+    async function cachedGetPage(path) {
+        const { url, res, cached } = await conditionalGet(path);
+
+        if (res.status === 304 && cached) {
+            return JSON.parse(cached.body);
+        }
+        if (res.status === 404) {
+            return null;
+        }
+        if (!res.ok) {
+            throw await toApiError(res, path);
+        }
+        const envelope = {
+            items: JSON.parse(await res.text()),
+            nextPage: nextPageOf(res.headers.get('link'))
+        };
+        const etag = res.headers.get('etag');
+        if (etag && cache) cache.set(url, etag, JSON.stringify(envelope));
+        return envelope;
+    }
+
+    /**
+     * A COMPLETE listing: follows the Link cursor across pages so callers
+     * that return plain arrays (labels, milestones, collaborators) never
+     * silently truncate at 100. Capped at 10 pages (1000 items) as a
+     * runaway guard — beyond that a repo needs the paginated API anyway.
+     * @param {string} pathWithQuery Must already carry `per_page=100`.
+     * @returns {Promise<any[]>}
+     */
+    async function listAll(pathWithQuery) {
+        /** @type {any[]} */
+        const items = [];
+        /** @type {number | null} */
+        let page = 1;
+        for (let hops = 0; hops < 10 && page !== null; hops++) {
+            const suffix = page > 1 ? `&page=${page}` : '';
+            const envelope = await cachedGetPage(`${pathWithQuery}${suffix}`);
+            if (!envelope) return items;
+            items.push(...envelope.items);
+            page = envelope.nextPage;
+        }
+        if (page !== null) {
+            // Deliberately partial rather than failing the whole render: a
+            // signal for debugging, not an error a board view must handle.
+            console.warn(`[github] listing truncated at ${items.length} items (10-page cap): ${pathWithQuery}`);
+        }
+        return items;
     }
 
     /** @param {any} r @returns {import('./index.js').GitHubRepo} */
@@ -97,6 +207,73 @@ export function createLiveClient(options) {
         openIssues: r.open_issues_count ?? 0,
         updatedAt: r.pushed_at ?? r.updated_at
     });
+
+    /** @param {any} u @returns {import('./index.js').GitHubPerson} */
+    const toPerson = (u) => ({ login: u.login, avatarUrl: u.avatar_url });
+
+    /** @param {any} l @returns {import('./index.js').GitHubLabel} */
+    const toLabel = (l) => ({
+        name: l.name,
+        color: l.color ?? '',
+        description: l.description ?? null
+    });
+
+    /** @param {any} m @returns {import('./index.js').GitHubMilestone} */
+    const toMilestone = (m) => ({
+        number: m.number,
+        title: m.title,
+        state: m.state,
+        description: m.description ?? null,
+        dueOn: m.due_on ?? null,
+        openIssues: m.open_issues ?? 0,
+        closedIssues: m.closed_issues ?? 0
+    });
+
+    /** @param {any} i @returns {import('./index.js').GitHubIssue} */
+    const toIssue = (i) => ({
+        number: i.number,
+        title: i.title,
+        body: i.body ?? null,
+        state: i.state,
+        // The issues list carries PRs too — the pull_request key is how
+        // GitHub marks them.
+        isPr: Boolean(i.pull_request),
+        draft: Boolean(i.draft),
+        labels: (i.labels ?? []).map(toLabel),
+        assignees: (i.assignees ?? []).map(toPerson),
+        milestone: i.milestone ? { number: i.milestone.number, title: i.milestone.title } : null,
+        comments: i.comments ?? 0,
+        author: i.user ? toPerson(i.user) : null,
+        createdAt: i.created_at,
+        updatedAt: i.updated_at,
+        closedAt: i.closed_at ?? null,
+        htmlUrl: i.html_url
+    });
+
+    /** @param {any} ev @returns {import('./index.js').GitHubTimelineEvent} */
+    const toTimelineEvent = (ev) => {
+        /** @type {import('./index.js').GitHubTimelineEvent} */
+        const out = {
+            event: ev.event,
+            // 'commented' carries the user under `user`; 'committed' has a
+            // git author (not a GitHub account) — actor stays null there.
+            actor: ev.actor ? toPerson(ev.actor) : (ev.user ? toPerson(ev.user) : null),
+            createdAt: ev.created_at ?? ev.author?.date ?? null
+        };
+        if (ev.label) out.label = { name: ev.label.name, color: ev.label.color ?? '' };
+        if (ev.assignee) out.assignee = toPerson(ev.assignee);
+        if (ev.event === 'commented') out.body = ev.body ?? '';
+        if (ev.event === 'committed') out.body = ev.message ?? '';
+        if (ev.event === 'cross-referenced' && ev.source?.issue) {
+            out.source = {
+                number: ev.source.issue.number,
+                title: ev.source.issue.title,
+                isPr: Boolean(ev.source.issue.pull_request),
+                repo: ev.source.issue.repository?.full_name ?? null
+            };
+        }
+        return out;
+    };
 
     return {
         async viewer() {
@@ -126,6 +303,73 @@ export function createLiveClient(options) {
         async repo(owner, name) {
             const r = await cachedGet(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
             return r ? toRepo(r) : null;
+        },
+
+        async repoIssues(owner, name, opts = {}) {
+            const paging = clampPaging(opts.page, opts.perPage);
+            const params = new URLSearchParams({
+                state: opts.state ?? 'all',
+                sort: 'updated',
+                per_page: String(paging.perPage)
+            });
+            if (paging.page > 1) params.set('page', String(paging.page));
+            if (opts.labels) params.set('labels', opts.labels);
+            if (opts.milestone !== undefined) params.set('milestone', String(opts.milestone));
+            if (opts.since) params.set('since', opts.since);
+            const page = await cachedGetPage(
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues?${params}`
+            );
+            if (!page) return { items: [], nextPage: null };
+            return { items: page.items.map(toIssue), nextPage: page.nextPage };
+        },
+
+        async repoLabels(owner, name) {
+            const labels = await listAll(
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/labels?per_page=100`
+            );
+            return labels.map(toLabel);
+        },
+
+        async repoMilestones(owner, name) {
+            const milestones = await listAll(
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/milestones?state=all&per_page=100`
+            );
+            return milestones.map(toMilestone);
+        },
+
+        async repoCollaborators(owner, name) {
+            try {
+                const users = await listAll(
+                    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/collaborators?per_page=100`
+                );
+                return users.map(toPerson);
+            } catch (err) {
+                // Listing collaborators needs push access — a plain 403 is an
+                // expected answer for read-only viewers, not an error. Budget
+                // 403s still throw so callers back off.
+                if (err instanceof GitHubApiError && err.status === 403 && !err.rateLimited) {
+                    return [];
+                }
+                throw err;
+            }
+        },
+
+        async issue(owner, name, n) {
+            const i = await cachedGet(
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues/${n}`
+            );
+            return i ? toIssue(i) : null;
+        },
+
+        async issueTimeline(owner, name, n) {
+            // First page only — 100 events cover the planner's detail view;
+            // deep histories are not worth the extra budget.
+            const events = await cachedGet(
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues/${n}/timeline?per_page=100`
+            );
+            return (events ?? [])
+                .filter((/** @type {any} */ ev) => TIMELINE_EVENTS.has(ev.event))
+                .map(toTimelineEvent);
         }
     };
 }

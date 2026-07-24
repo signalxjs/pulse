@@ -1,0 +1,47 @@
+[
+  {
+    "number": 22,
+    "title": "Cycle 22",
+    "state": "closed",
+    "description": "Jun 16 – Jun 30",
+    "dueOn": "2026-06-30T07:00:00Z",
+    "openIssues": 0,
+    "closedIssues": 6
+  },
+  {
+    "number": 23,
+    "title": "Cycle 23",
+    "state": "closed",
+    "description": "Jun 30 – Jul 14",
+    "dueOn": "2026-07-14T07:00:00Z",
+    "openIssues": 0,
+    "closedIssues": 2
+  },
+  {
+    "number": 24,
+    "title": "Cycle 24",
+    "state": "open",
+    "description": "Jul 14 – Jul 28",
+    "dueOn": "2026-07-28T07:00:00Z",
+    "openIssues": 12,
+    "closedIssues": 2
+  },
+  {
+    "number": 25,
+    "title": "Cycle 25",
+    "state": "open",
+    "description": "Jul 28 – Aug 11",
+    "dueOn": "2026-08-11T07:00:00Z",
+    "openIssues": 4,
+    "closedIssues": 0
+  },
+  {
+    "number": 26,
+    "title": "v3.0",
+    "state": "open",
+    "description": "v3.0 release",
+    "dueOn": "2026-08-15T07:00:00Z",
+    "openIssues": 0,
+    "closedIssues": 0
+  }
+]

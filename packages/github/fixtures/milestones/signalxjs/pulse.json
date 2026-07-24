@@ -1,0 +1,20 @@
+[
+  {
+    "number": 1,
+    "title": "M1 — foundations",
+    "state": "closed",
+    "description": "Shell, GitHub client, auth",
+    "dueOn": "2026-06-30T07:00:00Z",
+    "openIssues": 0,
+    "closedIssues": 3
+  },
+  {
+    "number": 2,
+    "title": "M2 — planner",
+    "state": "open",
+    "description": "Planner views over the GitHub client",
+    "dueOn": null,
+    "openIssues": 2,
+    "closedIssues": 0
+  }
+]
