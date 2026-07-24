@@ -210,6 +210,23 @@ describe('createLiveClient — repoCollaborators 403 tolerance', () => {
     });
 });
 
+describe('createLiveClient — complete listings', () => {
+    it('follows the Link cursor so >100-item listings are never truncated', async () => {
+        const label = (n: number) => ({ name: `l${n}`, color: 'aabbcc', description: null });
+        const { stub, calls } = fetchStub([
+            {
+                status: 200, body: [label(1), label(2)], etag: '"p1"',
+                headers: { link: '<https://api.github.com/repos/o/r/labels?per_page=100&page=2>; rel="next"' }
+            },
+            { status: 200, body: [label(3)], etag: '"p2"' }
+        ]);
+        const gh = createLiveClient({ token: 't', fetch: stub as unknown as typeof fetch });
+        const labels = await gh.repoLabels('o', 'r');
+        expect(labels.map((l) => l.name)).toEqual(['l1', 'l2', 'l3']);
+        expect(calls[1]!.url).toContain('page=2');
+    });
+});
+
 describe('createLiveClient — issueTimeline', () => {
     it('maps known events and filters unknown ones', async () => {
         const { stub } = fetchStub([{

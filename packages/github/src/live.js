@@ -169,6 +169,29 @@ export function createLiveClient(options) {
         return envelope;
     }
 
+    /**
+     * A COMPLETE listing: follows the Link cursor across pages so callers
+     * that return plain arrays (labels, milestones, collaborators) never
+     * silently truncate at 100. Capped at 10 pages (1000 items) as a
+     * runaway guard — beyond that a repo needs the paginated API anyway.
+     * @param {string} pathWithQuery Must already carry `per_page=100`.
+     * @returns {Promise<any[]>}
+     */
+    async function listAll(pathWithQuery) {
+        /** @type {any[]} */
+        const items = [];
+        let page = 1;
+        for (let hops = 0; hops < 10; hops++) {
+            const suffix = page > 1 ? `&page=${page}` : '';
+            const envelope = await cachedGetPage(`${pathWithQuery}${suffix}`);
+            if (!envelope) break;
+            items.push(...envelope.items);
+            if (envelope.nextPage === null) break;
+            page = envelope.nextPage;
+        }
+        return items;
+    }
+
     /** @param {any} r @returns {import('./index.js').GitHubRepo} */
     const toRepo = (r) => ({
         owner: r.owner.login,
@@ -296,25 +319,25 @@ export function createLiveClient(options) {
         },
 
         async repoLabels(owner, name) {
-            const labels = await cachedGet(
+            const labels = await listAll(
                 `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/labels?per_page=100`
             );
-            return (labels ?? []).map(toLabel);
+            return labels.map(toLabel);
         },
 
         async repoMilestones(owner, name) {
-            const milestones = await cachedGet(
+            const milestones = await listAll(
                 `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/milestones?state=all&per_page=100`
             );
-            return (milestones ?? []).map(toMilestone);
+            return milestones.map(toMilestone);
         },
 
         async repoCollaborators(owner, name) {
             try {
-                const users = await cachedGet(
+                const users = await listAll(
                     `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/collaborators?per_page=100`
                 );
-                return (users ?? []).map(toPerson);
+                return users.map(toPerson);
             } catch (err) {
                 // Listing collaborators needs push access — a plain 403 is an
                 // expected answer for read-only viewers, not an error. Budget
