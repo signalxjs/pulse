@@ -1,0 +1,55 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # Manual redeploys (e.g. roll forward/back to the current main after an
+  # incident, or re-run a deploy that failed on a transient error).
+  workflow_dispatch:
+
+# Deploys are strictly serialized and never cancelled mid-flight: a deploy
+# applies D1 migrations before shipping the worker, and two runs racing (or
+# one killed between "migrate" and "deploy") could strand the live worker on
+# a schema it doesn't expect. Queued runs wait their turn instead.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (cloudflare)
+        run: pnpm --filter pulse-app build:cloudflare
+
+      # Migrations BEFORE deploy: migrations are additive-only (see
+      # docs/deploy.md), so the currently-live worker keeps working against
+      # the new schema during the window between the two steps.
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: app
+          command: d1 migrations apply pulse --remote
+
+      - name: Deploy worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: app
+          command: deploy

@@ -106,6 +106,10 @@ agents the issue-first flow below is required.)
    differs from the merging account; an explicit message is used verbatim, so
    no trailers. If you used a worktree, remove it afterward: `pnpm wt rm <name>`.
 
+Merging to `main` **deploys to production**: `.github/workflows/deploy.yml`
+applies D1 migrations and ships the workerd build to Cloudflare on every push
+to `main` (see `docs/deploy.md`).
+
 ## Build, Test, Lint
 
 ```bash

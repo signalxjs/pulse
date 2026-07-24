@@ -43,3 +43,10 @@ ETag cache; schema comes from `app/migrations`).
 > core 0.11 shipped partially (core#300) and `@sigx/cache@0.10.0` needs a
 > pnpm override (core#301). Real-installation friction is part of this
 > repo's job.
+
+## Deploy
+
+Every merge to `main` deploys the workerd build to Cloudflare Workers
+(D1-backed) via `.github/workflows/deploy.yml` — migrations first, then the
+worker. One-time provisioning (D1 database, secrets, API token) and rollback
+are covered in [`docs/deploy.md`](docs/deploy.md).
