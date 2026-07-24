@@ -5,8 +5,12 @@ node_modules/
 
 # Build outputs
 dist/
+dist-cf/
 build/
 docs/dist/
+
+# Wrangler local state (dev server / local D1)
+.wrangler/
 *.d.ts
 *.d.ts.map
 *.js
@@ -20,6 +24,7 @@ docs/dist/
 # no-transpiler server) and ambient declarations — only ignore built output.
 # (These negations must come AFTER the *.js/*.d.ts patterns to win.)
 !app/src/env.d.ts
+!app/src/env.cloudflare.d.ts
 !packages/*/src/**
 !packages/*/scripts/**
 !packages/*/fixtures/**

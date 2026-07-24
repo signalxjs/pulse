@@ -114,6 +114,8 @@ pnpm dev         # Vite middleware + SSR dev server on :4823 (app/server.mjs)
 pnpm build       # app client + server bundles (vite build --app)
 pnpm start       # production server over dist/ (--conditions production)
 pnpm smoke       # Playwright browser smoke over the production build
+pnpm build:cloudflare  # bundled workerd build (dist-cf/, vite.config.cloudflare.ts)
+pnpm smoke:cf    # the SAME smoke over `wrangler dev --local` (real workerd + local D1)
 pnpm test        # vitest run (app + packages)
 pnpm test -- <path>                # single test file/dir (substring match)
 pnpm typecheck   # tsc, config: tsconfig.json
