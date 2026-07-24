@@ -9,7 +9,9 @@ type ListViewProps =
     /** The working set AFTER the chrome filters (BoardPage applies them). */
     Define.Prop<'issues', GitHubIssue[], true> &
     Define.Prop<'config', BoardConfig, true> &
-    Define.Prop<'loading', boolean>;
+    Define.Prop<'loading', boolean> &
+    /** Fired on row click: open the detail slide-over for `number`. */
+    Define.Prop<'onOpen', (number: number) => void, true>;
 
 /**
  * The List view ("Issues", handoff §5): one full-height scroll, grouped by
@@ -42,7 +44,12 @@ export const ListView = component<ListViewProps>(({ props }) => () => {
                         <span class="font-mono text-[11px] text-tf">{g.rows.length}</span>
                     </div>
                     {g.rows.map((issue) => (
-                        <IssueRow key={issue.number} issue={issue} config={config} />
+                        <IssueRow
+                            key={issue.number}
+                            issue={issue}
+                            config={config}
+                            onOpen={() => props.onOpen(issue.number)}
+                        />
                     ))}
                 </div>
             ))}

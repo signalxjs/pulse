@@ -8,14 +8,15 @@ import { LabelPill } from './LabelPill';
 
 type IssueRowProps =
     Define.Prop<'issue', GitHubIssue, true> &
-    Define.Prop<'config', BoardConfig, true>;
+    Define.Prop<'config', BoardConfig, true> &
+    /** Fired on click — opens the detail slide-over (pulse#54). */
+    Define.Prop<'onOpen', () => void>;
 
 /**
  * One List-view row (handoff §5): CSS grid `30px 66px 1fr auto auto`,
  * `--rowh` tall (40/34px by density) — `[priority] [ref] [title + inline
- * pills] [comment count] [avatars]`. Clicking opens nothing yet: the
- * detail panel is a later PR, so rows are deliberately inert (no cursor
- * affordance to break the promise).
+ * pills] [comment count] [avatars]`. Clicking opens the issue's detail
+ * slide-over (cursor-pointer per the handoff).
  */
 export const IssueRow = component<IssueRowProps>(({ props }) => () => {
     const issue = props.issue;
@@ -24,7 +25,8 @@ export const IssueRow = component<IssueRowProps>(({ props }) => () => {
     return (
         <div
             data-list-row={issue.number}
-            class="grid grid-cols-[30px_66px_1fr_auto_auto] items-center gap-3 border-b border-bd px-5 hover:bg-bg1"
+            onClick={() => props.onOpen?.()}
+            class="grid cursor-pointer grid-cols-[30px_66px_1fr_auto_auto] items-center gap-3 border-b border-bd px-5 hover:bg-bg1"
             style="height:var(--rowh)"
         >
             <span

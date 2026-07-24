@@ -8,7 +8,7 @@
 import { serverFn, ServerFnError } from '@sigx/server';
 import * as v from 'valibot';
 import type { BoardConfig, BoardStatusId } from '@pulse/db';
-import { GitHubApiError, type GitHubClient, type GitHubIssue } from '@pulse/github';
+import { GitHubApiError, type GitHubClient, type GitHubComment, type GitHubIssue } from '@pulse/github';
 import { boardKeys } from '../board/keys';
 import { STATUS_IDS } from '../board/detect';
 import { canRepresent, moveLabels } from '../board/derive';
@@ -193,6 +193,108 @@ export const moveIssue = serverFn({
             throw new ServerFnError(404, `no board is configured for ${owner}/${repo}`);
         }
         return applyMove(gh, config, owner, repo, number, target);
+    },
+    invalidates: (input) => [boardKeys.issues(input.owner, input.repo)]
+});
+
+const AddCommentInput = v.object({
+    owner: segment,
+    repo: segment,
+    number: v.pipe(v.number(), v.integer(), v.minValue(1)),
+    body: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(65536))
+});
+
+/**
+ * Post a comment on an issue (the detail panel's footer). Returns the
+ * created comment; the detail read is invalidated — mounted cells still
+ * refresh explicitly (findings F15), the invalidation covers future mounts.
+ */
+export const addComment = serverFn({
+    use: [withAuth],
+    input: AddCommentInput,
+    handler(rq, { owner, repo, number, body }): Promise<GitHubComment> {
+        return authed(rq).gh.createComment(owner, repo, number, body);
+    },
+    invalidates: (input) => [boardKeys.issueDetail(input.owner, input.repo, input.number)]
+});
+
+const PRIORITY_IDS = ['p0', 'p1', 'p2', 'p3'] as const;
+
+const NewIssueInput = v.object({
+    owner: segment,
+    repo: segment,
+    title: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(256)),
+    body: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(65536))),
+    /** Priority slot — mapped to the config's priority label; null = none. */
+    priority: v.optional(v.nullable(v.picklist(PRIORITY_IDS))),
+    /** Target column — mapped to the config's status label; null = none. */
+    status: v.optional(v.nullable(v.picklist(STATUS_IDS)))
+});
+
+type NewIssue = v.InferOutput<typeof NewIssueInput>;
+
+/**
+ * The creation computation `createIssue` runs once auth + config are
+ * resolved — exported separately so it unit-tests over the fixtures client
+ * (the applyMove pattern). Status placement follows the SAME rules as a
+ * card move: a column that can't persist (derive.canRepresent) is rejected,
+ * a mapped column contributes its label, and `done` + closeOnDone closes
+ * the fresh issue with a follow-up PATCH (GitHub always creates open).
+ */
+export async function applyCreate(
+    gh: GitHubClient,
+    config: BoardConfig,
+    { owner, repo, title, body, priority, status }: NewIssue
+): Promise<GitHubIssue> {
+    const labels: string[] = [];
+    if (priority != null) {
+        const label = config.priorities[priority];
+        if (label !== null) labels.push(label);
+    }
+    let close = false;
+    if (status != null) {
+        if (!canRepresent(config, status)) {
+            throw new ServerFnError(400, `the ${status} column has no mapped label — map one in setup before creating issues there`);
+        }
+        const mapped = config.statuses.find((s) => s.id === status)?.label;
+        if (mapped != null) labels.push(mapped);
+        close = status === 'done' && config.closeOnDone;
+    }
+    const issue = await gh.createIssue(owner, repo, {
+        title,
+        ...(body !== undefined && { body }),
+        ...(labels.length > 0 && { labels })
+    });
+    if (!close) return issue;
+    // The issue already exists — if the follow-up close fails, DON'T reject
+    // the whole call: that would let the client retry and create a
+    // duplicate. Return the created (still-open) issue; the user can drag
+    // it to Done. The board's derivation lands it in the mapped column
+    // regardless of state.
+    try {
+        return await gh.updateIssue(owner, repo, issue.number, { state: 'closed' });
+    } catch {
+        return issue;
+    }
+}
+
+/**
+ * Create an issue from the new-issue flow. Priority/status arrive as SLOT
+ * ids, never label names — the mapping to GitHub labels happens here
+ * against the server-side stored config, so a tampered payload cannot
+ * invent labels. Returns the created issue as GitHub answers it: the
+ * caller's optimistic-append source.
+ */
+export const createIssue = serverFn({
+    use: [withAuth],
+    input: NewIssueInput,
+    async handler(rq, input): Promise<GitHubIssue> {
+        const { gh } = authed(rq);
+        const config = await services().configStore.getBoard(input.owner, input.repo);
+        if (!config) {
+            throw new ServerFnError(404, `no board is configured for ${input.owner}/${input.repo}`);
+        }
+        return applyCreate(gh, config, input);
     },
     invalidates: (input) => [boardKeys.issues(input.owner, input.repo)]
 });

@@ -1,4 +1,4 @@
-import { component, effect, signal, useData, useHead } from 'sigx';
+import { component, effect, onMounted, onUnmounted, signal, useData, useHead } from 'sigx';
 import { useRoute, useRouter } from '@sigx/router';
 import type { BoardConfig, BoardStatusId } from '@pulse/db';
 import type { GitHubIssue } from '@pulse/github';
@@ -17,7 +17,11 @@ import { ListView } from './ListView';
 import { RoadmapView } from './RoadmapView';
 import { SprintView } from './SprintView';
 import { BacklogView } from './BacklogView';
-import { Toast } from './components/Toast';
+import { Toasts } from './components/Toast';
+import { IssueDetail } from './overlays/IssueDetail';
+import { CommandPalette } from './overlays/CommandPalette';
+import { NewIssue } from './overlays/NewIssue';
+import { isTypingTarget, shortcutAction } from './shortcuts';
 import { VIEWS, isViewKey, type ViewKey } from './views';
 
 /** Compile-time exhaustiveness for the view switch: if a new ViewKey is
@@ -120,17 +124,82 @@ const BoardPage = component(() => {
         }
     });
 
-    // ---- Toast (minimal inline — the full toast system is a later PR) ----
-    const toast = signal<{ message: string | null }>({ message: null });
-    let toastTimer: ReturnType<typeof setTimeout> | null = null;
-    const showToast = (message: string) => {
-        if (toastTimer !== null) clearTimeout(toastTimer);
-        toast.message = message;
-        toastTimer = setTimeout(() => {
-            toastTimer = null;
-            toast.message = null;
-        }, 4000);
+    // ---- Detail slide-over (pulse#54): ?issue=N IS the open state — the
+    // panel is shareable and the back button closes it (opening pushed a
+    // history entry; closing pushes one without the param).
+    const detailNum = (): number | null => {
+        const raw = route.query.issue;
+        const value = Array.isArray(raw) ? raw[0] : raw;
+        if (value === undefined) return null;
+        const n = Number(value);
+        return Number.isInteger(n) && n > 0 ? n : null;
     };
+    const openDetail = (number: number) => {
+        void router.push({ path: route.path, query: { ...route.query, issue: String(number) } });
+    };
+    const closeDetail = () => {
+        const query = { ...route.query };
+        delete query.issue;
+        // REPLACE, not push: opening pushed the ?issue entry, so replacing
+        // it on close means Back returns to the pre-open state instead of
+        // re-opening the panel (the "back-button closes" contract).
+        void router.replace({ path: route.path, query });
+    };
+
+    // ---- New-issue modal (pulse#54): local state — nothing else reads it.
+    const newIssue = signal<{ open: boolean; status: BoardStatusId | null }>({ open: false, status: null });
+    const openNewIssue = (status: BoardStatusId | null = null) => {
+        // The modal maps priority/status through the board config — a dead
+        // click otherwise (it only mounts when configured). Nudge to setup.
+        if (!configured()) {
+            ui.showToast('Set up the board before creating issues');
+            return;
+        }
+        newIssue.status = status;
+        newIssue.open = true;
+    };
+
+    // ---- Keyboard shortcuts (handoff §Interactions): ONE window keydown,
+    // decisions in the pure dispatcher (shortcuts.ts), execution here.
+    const onKeydown = (e: KeyboardEvent) => {
+        const action = shortcutAction(
+            e.key,
+            { meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey },
+            {
+                typing: isTypingTarget(e.target),
+                paletteOpen: ui.paletteOpen,
+                newIssueOpen: newIssue.open,
+                detailOpen: detailNum() !== null,
+                navOpen: ui.navOpen
+            }
+        );
+        if (action === null) return;
+        e.preventDefault();
+        switch (action.type) {
+            case 'toggle-palette': ui.togglePalette(); break;
+            case 'close-palette': ui.closePalette(); break;
+            case 'close-new-issue': newIssue.open = false; break;
+            case 'close-detail': closeDetail(); break;
+            case 'close-nav': ui.setNavOpen(false); break;
+            case 'focus-filter':
+                document.querySelector<HTMLInputElement>('input[aria-label="Filter issues"]')?.focus();
+                break;
+            case 'go-view': {
+                const { owner, repo } = params();
+                void router.push(action.view === 'board' ? `/b/${owner}/${repo}` : `/b/${owner}/${repo}/${action.view}`);
+                break;
+            }
+            case 'new-issue': openNewIssue(); break;
+        }
+    };
+    onMounted(() => {
+        if (import.meta.env.SSR) return;
+        window.addEventListener('keydown', onKeydown);
+    });
+    onUnmounted(() => {
+        if (import.meta.env.SSR) return;
+        window.removeEventListener('keydown', onKeydown);
+    });
 
     /** Optimistic write-through to the issues cell (@sigx/cache mutate —
      *  present with the cache pack installed; a silent no-op otherwise). */
@@ -178,7 +247,8 @@ const BoardPage = component(() => {
         } catch (err) {
             // Roll back to server truth — the optimistic value is stale.
             issues.refresh();
-            showToast(`Couldn't move #${number}: ${err instanceof Error ? err.message : String(err)}`);
+            // Errors hold longer than the 2s default — they carry a reason.
+            ui.showToast(`Couldn't move #${number}: ${err instanceof Error ? err.message : String(err)}`, 4000);
         }
     };
 
@@ -204,8 +274,10 @@ const BoardPage = component(() => {
         // until they arrive; every chrome component renders gracefully
         // without them).
         const issueList = issues.value ?? [];
-        const chromeLabels = labels.value ? labelsFor(labels.value, issueList, cfg.value?.config ?? null) : [];
+        const boardConfig = cfg.value?.config ?? null;
+        const chromeLabels = labels.value ? labelsFor(labels.value, issueList, boardConfig) : [];
         const team = people.value ? peopleFor(people.value, issueList) : [];
+        const detail = detailNum();
 
         return (
             <div
@@ -225,7 +297,13 @@ const BoardPage = component(() => {
                 )}
                 <Sidebar owner={owner} repo={repo} view={view?.key ?? 'board'} labels={chromeLabels} team={team} />
                 <main class="flex h-full min-w-0 flex-1 flex-col bg-bg0">
-                    <Header owner={owner} repo={repo} viewTitle={view?.title ?? 'Setup'} avatars={team.slice(0, 4)} />
+                    <Header
+                        owner={owner}
+                        repo={repo}
+                        viewTitle={view?.title ?? 'Setup'}
+                        avatars={team.slice(0, 4)}
+                        onNewIssue={() => openNewIssue()}
+                    />
                     <FilterBar labels={chromeLabels} />
                     <div class="relative min-h-0 flex-1 overflow-hidden">
                         {cfg.match({
@@ -293,11 +371,13 @@ const BoardPage = component(() => {
                                             config={config}
                                             loading={loading}
                                             onMove={(number, target) => void onMove(config, number, target)}
+                                            onOpen={openDetail}
+                                            onNew={(status) => openNewIssue(status)}
                                         />
                                     );
                                 }
                                 if (view!.key === 'list') {
-                                    return <ListView issues={working} config={config} loading={loading} />;
+                                    return <ListView issues={working} config={config} loading={loading} onOpen={openDetail} />;
                                 }
                                 if (view!.key === 'backlog') {
                                     return <BacklogView issues={working} config={config} loading={loading} />;
@@ -339,7 +419,53 @@ const BoardPage = component(() => {
                         })}
                     </div>
                 </main>
-                {toast.message !== null && <Toast message={toast.message} />}
+                {/* ---- Overlays (pulse#54) — over the whole shell ---- */}
+                {boardConfig && detail !== null && (
+                    <IssueDetail
+                        owner={owner}
+                        repo={repo}
+                        number={detail}
+                        config={boardConfig}
+                        onClose={closeDetail}
+                    />
+                )}
+                {ui.paletteOpen && (
+                    <CommandPalette
+                        owner={owner}
+                        repo={repo}
+                        issues={issueList}
+                        config={boardConfig}
+                        onOpenIssue={(n) => {
+                            ui.closePalette();
+                            openDetail(n);
+                        }}
+                        onNewIssue={() => {
+                            ui.closePalette();
+                            openNewIssue();
+                        }}
+                        onSync={() => {
+                            ui.closePalette();
+                            issues.refresh();
+                            ui.showToast('Synced with GitHub');
+                        }}
+                    />
+                )}
+                {boardConfig && newIssue.open && (
+                    <NewIssue
+                        owner={owner}
+                        repo={repo}
+                        config={boardConfig}
+                        initialStatus={newIssue.status}
+                        onClose={() => { newIssue.open = false; }}
+                        onCreated={(created) => {
+                            newIssue.open = false;
+                            // Optimistic append; refetch when no cache pack.
+                            if (!mutateIssues((list) => [created, ...list])) issues.refresh();
+                            ui.showToast(`Issue #${created.number} created`);
+                        }}
+                    />
+                )}
+                <Toasts />
             </div>
         );
     };
