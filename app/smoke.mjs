@@ -67,17 +67,17 @@ function startWorkerd() {
     // owns the schema on this target). --local writes .wrangler/state, the
     // same store `wrangler dev` reads below.
     const migrate = spawnSync(
-        'npx',
-        ['wrangler', 'd1', 'migrations', 'apply', 'pulse', '--local'],
+        'pnpm',
+        ['exec', 'wrangler', 'd1', 'migrations', 'apply', 'pulse', '--local'],
         { cwd: APP_DIR, env, stdio: 'inherit' }
     );
     if (migrate.status !== 0) {
         throw new Error('❌ pulse-smoke: wrangler d1 migrations apply --local failed');
     }
     return spawn(
-        'npx',
+        'pnpm',
         [
-            'wrangler', 'dev', '--local', '--port', String(PORT),
+            'exec', 'wrangler', 'dev', '--local', '--port', String(PORT),
             // Workers read config vars, not process env — same trio the
             // node smoke exports.
             '--var', 'PULSE_FIXTURES:1',
