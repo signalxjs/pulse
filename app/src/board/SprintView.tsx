@@ -49,22 +49,17 @@ export const SprintView = component<SprintViewProps>(({ props }) => () => {
     // overdue cycle reads "0 days left" rather than a negative.
     const daysLeft = Math.max(0, Math.ceil((Date.parse(cycle.end) - Date.now()) / DAY));
     const scoped = props.issues.filter((i) => i.milestone?.number === cycle.number);
+    // One pass over the scoped issues, statusOf computed once each.
+    const focus: typeof scoped = [];
+    const next: typeof scoped = [];
+    for (const i of scoped) {
+        const s = statusOf(i, config);
+        if (s === 'inprogress' || s === 'inreview') focus.push(i);
+        else if (s === 'todo') next.push(i);
+    }
     const lanes = [
-        {
-            id: 'focus',
-            name: 'In focus',
-            dot: 'oklch(0.74 0.15 65)',
-            rows: sortByPriority(scoped.filter((i) => {
-                const s = statusOf(i, config);
-                return s === 'inprogress' || s === 'inreview';
-            }), config)
-        },
-        {
-            id: 'next',
-            name: 'Up next',
-            dot: 'oklch(0.7 0.11 250)',
-            rows: sortByPriority(scoped.filter((i) => statusOf(i, config) === 'todo'), config)
-        }
+        { id: 'focus', name: 'In focus', dot: 'oklch(0.74 0.15 65)', rows: sortByPriority(focus, config) },
+        { id: 'next', name: 'Up next', dot: 'oklch(0.7 0.11 250)', rows: sortByPriority(next, config) }
     ];
     const tiles = [
         { id: 'scope', label: 'Scope', value: stats.scope, color: 'var(--color-tx)' },

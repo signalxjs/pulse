@@ -68,8 +68,14 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                 // bar reflects what the board actually tracks (and follows
                 // the live filters); an issue-less cycle reads "planned"
                 // (prototype behavior).
-                const inCycle = props.issues.filter((i) => i.milestone?.number === c.number);
-                const done = inCycle.filter((i) => statusOf(i, props.config) === 'done').length;
+                // One pass: the cycle's issue count and its done count.
+                let inCycle = 0;
+                let done = 0;
+                for (const i of props.issues) {
+                    if (i.milestone?.number !== c.number) continue;
+                    inCycle++;
+                    if (statusOf(i, props.config) === 'done') done++;
+                }
                 const hue = STATE_HUE[c.state];
                 const slot = roadmapSlot(c, windowStart);
                 const frac = roadmapEndFraction(c, windowStart);
@@ -77,7 +83,7 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                 // disagree with the label — a milestone can be closed on
                 // GitHub while still holding open issues (bar and "2/14"
                 // must tell the same story).
-                const progress = inCycle.length === 0 ? 0 : Math.round((done / inCycle.length) * 100);
+                const progress = inCycle === 0 ? 0 : Math.round((done / inCycle) * 100);
                 return (
                     <div
                         key={c.number}
@@ -94,7 +100,7 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                         </div>
                         <div
                             class="relative h-full"
-                            style="background:linear-gradient(90deg,var(--color-bd) 1px,transparent 1px);background-size:16.666% 100%"
+                            style={`background:linear-gradient(90deg,var(--color-bd) 1px,transparent 1px);background-size:${(100 / ROADMAP_SLOTS).toFixed(3)}% 100%`}
                         >
                             {milestone
                                 ? frac !== null && (
@@ -123,7 +129,7 @@ export const RoadmapView = component<RoadmapViewProps>(({ props }) => () => {
                                             class="relative whitespace-nowrap font-mono text-[11px] font-semibold"
                                             style={`color:oklch(0.9 0.06 ${hue})`}
                                         >
-                                            {inCycle.length > 0 ? `${done}/${inCycle.length}` : 'planned'}
+                                            {inCycle > 0 ? `${done}/${inCycle}` : 'planned'}
                                         </span>
                                     </div>
                                 )}
