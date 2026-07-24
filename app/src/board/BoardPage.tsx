@@ -18,7 +18,13 @@ import { RoadmapView } from './RoadmapView';
 import { SprintView } from './SprintView';
 import { BacklogView } from './BacklogView';
 import { Toast } from './components/Toast';
-import { VIEWS, isViewKey } from './views';
+import { VIEWS, isViewKey, type ViewKey } from './views';
+
+/** Compile-time exhaustiveness for the view switch: if a new ViewKey is
+ *  added without a branch, `never` fails to accept it and tsc errors. */
+function exhaustiveView(key: never): never {
+    throw new Error(`BoardPage: unhandled view "${key as ViewKey}"`);
+}
 
 /**
  * The planner shell (pulse#39 chrome; pulse#40 config guard + live data):
@@ -315,14 +321,20 @@ const BoardPage = component(() => {
                                         />
                                     );
                                 }
-                                return (
-                                    <SprintView
-                                        issues={working}
-                                        config={config}
-                                        cycles={cycles}
-                                        loading={cyclesLoading}
-                                    />
-                                );
+                                if (view!.key === 'sprint') {
+                                    return (
+                                        <SprintView
+                                            issues={working}
+                                            config={config}
+                                            cycles={cycles}
+                                            loading={cyclesLoading}
+                                        />
+                                    );
+                                }
+                                // Every ViewKey is handled above; a new key
+                                // reaching here is a wiring bug, not a
+                                // silent Sprint fallback.
+                                return exhaustiveView(view!.key);
                             }
                         })}
                     </div>
