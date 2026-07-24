@@ -81,8 +81,8 @@ importers:
         specifier: 'catalog:'
         version: 0.13.0
       '@sigx/store':
-        specifier: ^0.10.0
-        version: 0.10.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)
+        specifier: ^0.11.0
+        version: 0.11.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)
       daisyui:
         specifier: ^5.5.14
         version: 5.6.18
@@ -431,8 +431,8 @@ packages:
   '@sigx/server-renderer@0.13.0':
     resolution: {integrity: sha512-qCxZ+swuLOexzDTIg5rydwPVWk3LHX5v2ZENvkOWXSfwv1tdtFDT8sEaD/etUToNKtLZ2hI4XVphfVGC5ufzKw==}
 
-  '@sigx/store@0.10.0':
-    resolution: {integrity: sha512-WSfyr5sotTOVMkesqGdTyHqTouyzByJLL04YDUqAeFwnJL/Nhwo0E2mwnYAHn8W6EZtgoitH/VsHiXK9eMU25Q==}
+  '@sigx/store@0.11.0':
+    resolution: {integrity: sha512-fvCSKkiTxkGMwRoVHpSeHrj9Uj6LWxyuwTCV15j4QzwKU3lkmoHkl6/wny2+SY4EYGa8iY3BsAnpe0AytLP/jA==}
     peerDependencies:
       '@sigx/reactivity': ^0.13.0
       '@sigx/runtime-core': ^0.13.0
@@ -1587,7 +1587,7 @@ snapshots:
     dependencies:
       sigx: 0.13.0
 
-  '@sigx/store@0.10.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)':
+  '@sigx/store@0.11.0(@sigx/reactivity@0.13.0)(@sigx/runtime-core@0.13.0)':
     dependencies:
       '@sigx/reactivity': 0.13.0
       '@sigx/runtime-core': 0.13.0
