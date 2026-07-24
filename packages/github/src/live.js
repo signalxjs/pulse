@@ -39,14 +39,27 @@ function isRateLimited(res) {
 /**
  * Build the GitHubApiError for a non-ok response. The body's message tells
  * rate-limit 403s apart from plain permission 403s when the headers alone
- * don't (secondary limits sometimes ship neither budget header).
+ * don't (secondary limits sometimes ship neither budget header). A 422's
+ * `errors[]` field details are folded into the message — "Validation
+ * Failed" alone never tells a caller WHICH field was rejected.
  * @param {Response} res
  * @param {string} path
  */
 async function toApiError(res, path) {
     let message = '';
     try {
-        message = JSON.parse(await res.text())?.message ?? '';
+        const parsed = JSON.parse(await res.text());
+        message = parsed?.message ?? '';
+        if (res.status === 422 && Array.isArray(parsed?.errors)) {
+            const details = parsed.errors
+                .map((/** @type {any} */ e) => typeof e === 'string'
+                    ? e
+                    : e?.message ?? [e?.resource, e?.field, e?.code].filter(Boolean).join(' '))
+                .filter(Boolean);
+            if (details.length) {
+                message = `${message || 'Validation Failed'} (${details.join('; ')})`;
+            }
+        }
     } catch {
         // Non-JSON error body — the status alone will have to do.
     }
@@ -95,6 +108,17 @@ export function createLiveClient(options) {
     const doFetch = options.fetch ?? fetch;
     const cache = options.etagCache;
 
+    /** @returns {Record<string, string>} */
+    function baseHeaders() {
+        return {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${options.token}`,
+            // GitHub requires a User-Agent identifying the app.
+            'user-agent': 'pulse (github.com/signalxjs/pulse)',
+            'x-github-api-version': '2022-11-28'
+        };
+    }
+
     /**
      * Perform one conditional GET. Returns the raw Response plus the cache
      * entry that supplied the If-None-Match validator (if any).
@@ -103,18 +127,38 @@ export function createLiveClient(options) {
     async function conditionalGet(path) {
         const url = `${baseUrl}${path}`;
         const cached = cache?.get(url);
-        /** @type {Record<string, string>} */
-        const headers = {
-            accept: 'application/vnd.github+json',
-            authorization: `Bearer ${options.token}`,
-            // GitHub requires a User-Agent identifying the app.
-            'user-agent': 'pulse (github.com/signalxjs/pulse)',
-            'x-github-api-version': '2022-11-28'
-        };
+        const headers = baseHeaders();
         if (cached) headers['if-none-match'] = cached.etag;
 
         const res = await doFetch(url, { headers });
         return { url, res, cached };
+    }
+
+    /**
+     * Send an authenticated write (POST/PATCH/…) as JSON. Same auth/headers
+     * as the GETs minus If-None-Match — writes never touch the ETag cache:
+     * their responses are single-use and GitHub charges the budget
+     * regardless. Any non-2xx throws a GitHubApiError (a write 404 is an
+     * error, never a "not found" data state).
+     * @param {string} method
+     * @param {string} path
+     * @param {unknown} [body]
+     * @returns {Promise<any>} Parsed JSON, or null on 204.
+     */
+    async function send(method, path, body) {
+        const headers = baseHeaders();
+        /** @type {RequestInit} */
+        const init = { method, headers };
+        if (body !== undefined) {
+            headers['content-type'] = 'application/json';
+            init.body = JSON.stringify(body);
+        }
+        const res = await doFetch(`${baseUrl}${path}`, init);
+        if (!res.ok) {
+            throw await toApiError(res, path);
+        }
+        if (res.status === 204) return null;
+        return JSON.parse(await res.text());
     }
 
     /**
@@ -370,6 +414,47 @@ export function createLiveClient(options) {
             return (events ?? [])
                 .filter((/** @type {any} */ ev) => TIMELINE_EVENTS.has(ev.event))
                 .map(toTimelineEvent);
+        },
+
+        async createIssue(owner, name, input) {
+            const i = await send(
+                'POST',
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues`,
+                input
+            );
+            return toIssue(i);
+        },
+
+        async updateIssue(owner, name, n, patch) {
+            const i = await send(
+                'PATCH',
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues/${n}`,
+                patch
+            );
+            return toIssue(i);
+        },
+
+        async createComment(owner, name, n, body) {
+            const c = await send(
+                'POST',
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/issues/${n}/comments`,
+                { body }
+            );
+            return {
+                id: c.id,
+                body: c.body ?? '',
+                createdAt: c.created_at,
+                author: toPerson(c.user)
+            };
+        },
+
+        async createLabel(owner, name, input) {
+            const l = await send(
+                'POST',
+                `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/labels`,
+                input
+            );
+            return toLabel(l);
         }
     };
 }

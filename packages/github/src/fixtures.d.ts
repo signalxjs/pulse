@@ -7,6 +7,8 @@ import type { GitHubClient } from './index.js';
 
 /**
  * Recorded-JSON adapter — deterministic, tokenless (CI smokes, dev). Reads
- * the generated `fixtures-data.js` module, never the filesystem.
+ * the generated `fixtures-data.js` module, never the filesystem. Writes
+ * land in a per-instance in-memory overlay; the recorded data itself is
+ * never mutated, so a fresh client starts pristine.
  */
 export function createFixturesClient(): GitHubClient;

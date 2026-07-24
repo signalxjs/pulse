@@ -86,6 +86,45 @@ export interface GitHubTimelineEvent {
     source?: { number: number; title: string; isPr: boolean; repo: string | null };
 }
 
+/** A single issue comment as returned by `createComment`. */
+export interface GitHubComment {
+    id: number;
+    body: string;
+    createdAt: string;
+    author: GitHubPerson;
+}
+
+export interface CreateIssueInput {
+    title: string;
+    body?: string;
+    /** Label names; on the live API unknown names are auto-created. */
+    labels?: string[];
+    /** Assignee logins. */
+    assignees?: string[];
+    /** Milestone number. */
+    milestone?: number;
+}
+
+/**
+ * Partial update — omitted fields stay untouched. `labels`/`assignees` are
+ * FULL replacement sets, `milestone: null` clears the milestone.
+ */
+export interface UpdateIssuePatch {
+    title?: string;
+    body?: string;
+    labels?: string[];
+    state?: 'open' | 'closed';
+    milestone?: number | null;
+    assignees?: string[];
+}
+
+export interface CreateLabelInput {
+    name: string;
+    /** Hex color WITHOUT the leading '#'. */
+    color: string;
+    description?: string;
+}
+
 /** One page of a paginated listing; `nextPage` is null on the last page. */
 export interface Page<T> {
     items: T[];
@@ -138,6 +177,23 @@ export interface GitHubClient {
     issue(owner: string, name: string, n: number): Promise<GitHubIssue | null>;
     /** First 100 timeline events of an issue, unknown event types filtered out. */
     issueTimeline(owner: string, name: string, n: number): Promise<GitHubTimelineEvent[]>;
+
+    // Writes. Non-2xx answers (including 404s) throw GitHubApiError — a
+    // write never reports "not found" as a data state. 422 validation
+    // details are folded into the error message.
+
+    /** Create an issue; resolves to the created issue as GitHub returns it. */
+    createIssue(owner: string, name: string, input: CreateIssueInput): Promise<GitHubIssue>;
+    /**
+     * Patch an issue — the status-change primitive: callers send the full
+     * replacement label set (and/or `state`) in one atomic request whose
+     * response is the optimistic-UI reconcile source.
+     */
+    updateIssue(owner: string, name: string, n: number, patch: UpdateIssuePatch): Promise<GitHubIssue>;
+    /** Add a comment to an issue. */
+    createComment(owner: string, name: string, n: number, body: string): Promise<GitHubComment>;
+    /** Create a repo label; a duplicate name throws a 422 GitHubApiError. */
+    createLabel(owner: string, name: string, input: CreateLabelInput): Promise<GitHubLabel>;
 }
 
 export interface LiveClientOptions {

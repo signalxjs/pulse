@@ -35,7 +35,12 @@ beforeAll(async () => {
             repoMilestones: async () => [],
             repoCollaborators: async () => [],
             issue: async () => null,
-            issueTimeline: async () => []
+            issueTimeline: async () => [],
+            // The auth flow only ever calls viewer(); writes are unreachable.
+            createIssue: async () => { throw new Error('unused'); },
+            updateIssue: async () => { throw new Error('unused'); },
+            createComment: async () => { throw new Error('unused'); },
+            createLabel: async () => { throw new Error('unused'); }
         }),
         oauth: { clientId: 'cid', clientSecret: 'cs' },
         fetch: (async () => ({
