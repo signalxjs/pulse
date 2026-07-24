@@ -1,0 +1,30 @@
+{
+    "name": "@pulse/db",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Pulse's async SQL seam — one PulseDb interface over node:sqlite (local) and Cloudflare D1 (production), plus migrations and the board-config store",
+    "type": "module",
+    "main": "./src/index.js",
+    "types": "./src/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./src/index.d.ts",
+            "default": "./src/index.js"
+        },
+        "./sqlite": {
+            "types": "./src/sqlite.d.ts",
+            "default": "./src/sqlite.js"
+        },
+        "./d1": {
+            "types": "./src/d1.d.ts",
+            "default": "./src/d1.js"
+        },
+        "./migrate": {
+            "types": "./src/migrate.d.ts",
+            "default": "./src/migrate.js"
+        }
+    },
+    "engines": {
+        "node": ">=24"
+    }
+}

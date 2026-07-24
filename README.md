@@ -20,6 +20,7 @@ logged in [`docs/findings.md`](docs/findings.md).
 | `app/` | the Pulse application (SSR entries, routes, pages, Express server) |
 | `packages/github` | GitHub API client — `live` + `fixtures` adapters, ETag cache (M1) |
 | `packages/auth` | GitHub OAuth + PAT sessions (M1) |
+| `packages/db` | async SQL seam — `node:sqlite` + Cloudflare D1 drivers, migrations, board-config store (M2) |
 | `packages/forms` | Standard-Schema form state (M2) |
 | `docs/findings.md` | the running stress-test findings report |
 
