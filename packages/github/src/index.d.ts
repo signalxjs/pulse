@@ -3,6 +3,7 @@
  * (JSDoc-typed) because it runs under the no-transpiler `app/server.mjs`;
  * these declarations serve the Vite-processed app code that imports it.
  */
+import type { PulseDb } from '@pulse/db';
 
 export interface GitHubUser {
     login: string;
@@ -206,10 +207,22 @@ export interface LiveClientOptions {
     fetch?: typeof fetch;
 }
 
+/**
+ * Conditional-request cache. Implementations may be sync (in-memory) or
+ * async (PulseDb, D1) — the live client awaits both forms, and awaits `set`
+ * so the write is never a floating promise (those get cancelled on Workers).
+ */
 export interface EtagCache {
-    get(key: string): { etag: string; body: string } | undefined;
-    set(key: string, etag: string, body: string): void;
+    get(key: string): { etag: string; body: string } | null | undefined
+        | Promise<{ etag: string; body: string } | null | undefined>;
+    set(key: string, etag: string, body: string): void | Promise<void>;
 }
+
+/**
+ * EtagCache over any PulseDb — requires the `etag_cache` table (apply the
+ * app migrations first). WinterCG-clean: works over node:sqlite and D1.
+ */
+export function createDbEtagCache(db: PulseDb): EtagCache;
 
 /** GitHub REST v3 over fetch with If-None-Match conditional requests. */
 export function createLiveClient(options: LiveClientOptions): GitHubClient;

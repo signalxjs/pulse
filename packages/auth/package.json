@@ -2,7 +2,7 @@
     "name": "@pulse/auth",
     "version": "0.1.0",
     "private": true,
-    "description": "Pulse's GitHub auth \u2014 OAuth web flow + PAT fallback, encrypted-token sessions in node:sqlite, signed HttpOnly cookies (server-only)",
+    "description": "Pulse's GitHub auth \u2014 OAuth web flow + PAT fallback, encrypted-token sessions over @pulse/db, signed HttpOnly cookies (server-only)",
     "type": "module",
     "main": "./src/index.js",
     "types": "./src/index.d.ts",
@@ -17,7 +17,8 @@
     },
     "dependencies": {
         "express": "^5.2.1",
-        "@pulse/github": "workspace:*"
+        "@pulse/github": "workspace:*",
+        "@pulse/db": "workspace:*"
     },
     "devDependencies": {
         "@types/express": "^5.0.6"

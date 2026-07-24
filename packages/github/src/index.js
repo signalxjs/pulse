@@ -10,11 +10,12 @@
  * runtime-specific pieces live behind subpaths:
  * - `@pulse/github` — `createLiveClient({ token })`, REST v3 over fetch with
  *   If-None-Match conditional requests against an EtagCache (a 304 costs no
- *   rate-limit budget on GitHub's side).
+ *   rate-limit budget on GitHub's side), plus `createDbEtagCache(db)` — the
+ *   EtagCache over any PulseDb (@pulse/db), itself WinterCG-clean.
  * - `@pulse/github/fixtures` — `createFixturesClient()`, recorded JSON via
  *   static imports (no fs), deterministic and tokenless; what CI smokes run
  *   against.
- * - `@pulse/github/node` — `createSqliteEtagCache(dbPath)`, node:sqlite.
  */
 
 export { createLiveClient, GitHubApiError } from './live.js';
+export { createDbEtagCache } from './db-etag-cache.js';

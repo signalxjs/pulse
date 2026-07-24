@@ -126,7 +126,7 @@ export function createLiveClient(options) {
      */
     async function conditionalGet(path) {
         const url = `${baseUrl}${path}`;
-        const cached = cache?.get(url);
+        const cached = await cache?.get(url);
         const headers = baseHeaders();
         if (cached) headers['if-none-match'] = cached.etag;
 
@@ -180,7 +180,8 @@ export function createLiveClient(options) {
         }
         const body = await res.text();
         const etag = res.headers.get('etag');
-        if (etag && cache) cache.set(url, etag, body);
+        // Await the write — a floating promise gets cancelled on Workers.
+        if (etag && cache) await cache.set(url, etag, body);
         return JSON.parse(body);
     }
 
@@ -209,7 +210,8 @@ export function createLiveClient(options) {
             nextPage: nextPageOf(res.headers.get('link'))
         };
         const etag = res.headers.get('etag');
-        if (etag && cache) cache.set(url, etag, JSON.stringify(envelope));
+        // Await the write — a floating promise gets cancelled on Workers.
+        if (etag && cache) await cache.set(url, etag, JSON.stringify(envelope));
         return envelope;
     }
 

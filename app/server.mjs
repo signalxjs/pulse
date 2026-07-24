@@ -7,6 +7,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createSessionStore, createAuthRouter, getSession } from '@pulse/auth';
+import { createSqliteDb } from '@pulse/db/sqlite';
+import { applyMigrations } from '@pulse/db/migrate';
 import { createGitHubApi } from './server/github-api.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -26,9 +28,13 @@ const isBot = (ua) => /bot|crawl|spider|slurp|gptbot|claudebot|perplexity|headle
 
 async function createServer() {
     const app = express();
-    const dbPath = process.env.PULSE_DB || ':memory:';
+    // ONE PulseDb for the whole process — sessions and the ETag cache share
+    // it, and the schema comes from the migrations, applied before serving.
+    const db = createSqliteDb(process.env.PULSE_DB || ':memory:');
+    const applied = await applyMigrations(db, resolve(__dirname, 'migrations'));
+    if (applied.length > 0) console.log(`[pulse] applied migrations: ${applied.join(', ')}`);
 
-    const sessions = createSessionStore({ dbPath, secret });
+    const sessions = createSessionStore({ db, secret });
     // OAuth needs BOTH credentials; the fixtures decision keys off the SAME
     // resolution so a half-configured OAuth app can't silently flip modes.
     const oauth = process.env.PULSE_OAUTH_CLIENT_ID && process.env.PULSE_OAUTH_CLIENT_SECRET
@@ -42,7 +48,7 @@ async function createServer() {
     // silently swallowed by fixtures. CI smokes set PULSE_FIXTURES=1.
     const fixtures = process.env.PULSE_FIXTURES === '1';
     const { api, clientFor, makeClient } = createGitHubApi({
-        dbPath,
+        db,
         fixtures,
         getSession: (req) => getSession(req, sessions, secret)
     });
@@ -56,9 +62,9 @@ async function createServer() {
     // clientFor() is null (live setup, unauthenticated), /api/github
     // answers 401 and the SSR entry provides NO PulseApi — the auth guard
     // redirects before any page could reach for it.
-    const requestCtx = (req) => {
-        const user = getSession(req, sessions, secret)?.user ?? null;
-        const gh = clientFor(req);
+    const requestCtx = async (req) => {
+        const user = (await getSession(req, sessions, secret))?.user ?? null;
+        const gh = await clientFor(req);
         return {
             user,
             api: gh && {
@@ -89,8 +95,13 @@ async function createServer() {
         // @sigx/vite 0.13.0 (core#304) — as the raw IncomingMessage, where
         // prod passes a resolved context. Decorate the request so the
         // factory's normalizer finds the same shape either way.
-        app.use((req, res, next) => {
-            req.pulseCtx = requestCtx(req);
+        app.use(async (req, res, next) => {
+            try {
+                req.pulseCtx = await requestCtx(req);
+            } catch (err) {
+                next(err);
+                return;
+            }
             handler(req, res, next);
         });
     } else {
@@ -112,7 +123,7 @@ async function createServer() {
             // The factory's second parameter is this request's context
             // ({ user, api }) — prod passes it directly (router-SSR
             // contract §1 allows extra factory parameters).
-            app: (url, req) => createApp(url, requestCtx(req)),
+            app: async (url, req) => createApp(url, await requestCtx(req)),
             isBot,
             document: {
                 // Route-chunk preloads (contract §2) join here once routes

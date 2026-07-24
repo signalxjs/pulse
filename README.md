@@ -34,7 +34,8 @@ pnpm start        # production server over the built output
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-Requires Node ≥ 24 (`node:sqlite` backs sessions and the ETag cache).
+Requires Node ≥ 24 (`node:sqlite`, via `@pulse/db`, backs sessions and the
+ETag cache; schema comes from `app/migrations`).
 
 > Dependency note: `@sigx/*` is consumed at PUBLISHED versions on the
 > coherent 0.10 matrix (core 0.10 / router 0.8 / store 0.8 / daisyui 0.8) —
