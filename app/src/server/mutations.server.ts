@@ -12,7 +12,7 @@ import { GitHubApiError, type GitHubClient, type GitHubComment, type GitHubIssue
 import { boardKeys } from '../board/keys';
 import { STATUS_IDS } from '../board/detect';
 import { canRepresent, moveLabels } from '../board/derive';
-import { authed, withAuth } from './auth.server';
+import { authed } from './auth.server';
 import { services } from './services.server';
 
 const segment = v.pipe(v.string(), v.regex(/^(?!\.{1,2}$)[A-Za-z0-9._-]+$/));
@@ -78,14 +78,13 @@ export function duplicateMapping(config: {
  * instead of a cached null (redirect-to-setup loop otherwise).
  */
 export const saveBoard = serverFn({
-    use: [withAuth],
     input: BoardConfigInput,
     async handler(rq, input): Promise<BoardConfig> {
         const dup = duplicateMapping(input);
         if (dup) {
             throw new ServerFnError(400, `label "${dup}" is mapped to more than one slot`);
         }
-        const { user } = authed(rq);
+        const { user } = await authed(rq);
         const { configStore } = services();
         const existing = await configStore.getBoard(input.owner, input.repo);
         const config: BoardConfig = { ...input, createdBy: existing?.createdBy ?? user.login };
@@ -116,10 +115,9 @@ const CreateMissingLabelsInput = v.object({
  * were actually created (not the 422-skipped ones).
  */
 export const createMissingLabels = serverFn({
-    use: [withAuth],
     input: CreateMissingLabelsInput,
     async handler(rq, { owner, repo, labels }): Promise<string[]> {
-        const { gh } = authed(rq);
+        const { gh } = await authed(rq);
         const created: string[] = [];
         for (const label of labels) {
             try {
@@ -184,10 +182,9 @@ export async function applyMove(
  * GitHub answers it: the caller's optimistic-UI reconcile source.
  */
 export const moveIssue = serverFn({
-    use: [withAuth],
     input: MoveIssueInput,
     async handler(rq, { owner, repo, number, target }): Promise<GitHubIssue> {
-        const { gh } = authed(rq);
+        const { gh } = await authed(rq);
         const config = await services().configStore.getBoard(owner, repo);
         if (!config) {
             throw new ServerFnError(404, `no board is configured for ${owner}/${repo}`);
@@ -210,10 +207,9 @@ const AddCommentInput = v.object({
  * refresh explicitly (findings F15), the invalidation covers future mounts.
  */
 export const addComment = serverFn({
-    use: [withAuth],
     input: AddCommentInput,
-    handler(rq, { owner, repo, number, body }): Promise<GitHubComment> {
-        return authed(rq).gh.createComment(owner, repo, number, body);
+    async handler(rq, { owner, repo, number, body }): Promise<GitHubComment> {
+        return (await authed(rq)).gh.createComment(owner, repo, number, body);
     },
     invalidates: (input) => [boardKeys.issueDetail(input.owner, input.repo, input.number)]
 });
@@ -286,10 +282,9 @@ export async function applyCreate(
  * caller's optimistic-append source.
  */
 export const createIssue = serverFn({
-    use: [withAuth],
     input: NewIssueInput,
     async handler(rq, input): Promise<GitHubIssue> {
-        const { gh } = authed(rq);
+        const { gh } = await authed(rq);
         const config = await services().configStore.getBoard(input.owner, input.repo);
         if (!config) {
             throw new ServerFnError(404, `no board is configured for ${input.owner}/${input.repo}`);

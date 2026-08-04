@@ -29,13 +29,14 @@ const PatFormInput = v.object({
 });
 
 export const submitPat = serverFn({
-    // Deliberately open (rfc-server-v3 §1.3-1.4): this IS the sign-in
-    // endpoint, so an unauthenticated visitor must be able to reach it —
-    // guarding it with `withAuth` like every other server function here would
-    // make signing in impossible. The trust boundary is the validator above
-    // plus `signInWithPat`, which rejects a bad token; `safeReturnTo` keeps a
-    // client-supplied redirect relative.
-    unguarded: true,
+    // Deliberately open (rfc-server-v4 §1.2): this IS the sign-in endpoint,
+    // so an unauthenticated visitor must be able to reach it — the app
+    // default (`requireAuthenticated`) that gates every other server
+    // function here would make signing in impossible. Waives ONLY the
+    // identity gate: middleware and authentication still run. The trust
+    // boundary is the validator above plus `signInWithPat`, which rejects a
+    // bad token; `safeReturnTo` keeps a client-supplied redirect relative.
+    allowAnonymous: true,
     form: true,
     input: PatFormInput,
     async handler(rq, input: v.InferOutput<typeof PatFormInput>) {

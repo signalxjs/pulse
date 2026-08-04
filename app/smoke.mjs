@@ -155,6 +155,11 @@ function startNodeServer() {
 
 function startWorkerd() {
     const env = { ...process.env, WRANGLER_SEND_METRICS: 'false' };
+    // Windows: `pnpm` is a .cmd shim — spawn()/spawnSync() without a shell
+    // is ENOENT there (the node smoke never hits this: it spawns
+    // process.execPath). CI runs this on ubuntu; the shell is for the
+    // Windows contributor running `pnpm smoke:cf` locally.
+    const viaShell = process.platform === 'win32';
     // Deterministic every run: wrangler --local persists D1 state across
     // runs (.wrangler/state), so a previous smoke's saved board config
     // would break the setup-redirect assertions. Start from nothing.
@@ -165,7 +170,7 @@ function startWorkerd() {
     const migrate = spawnSync(
         'pnpm',
         ['exec', 'wrangler', 'd1', 'migrations', 'apply', 'pulse', '--local'],
-        { cwd: APP_DIR, env, stdio: 'inherit' }
+        { cwd: APP_DIR, env, stdio: 'inherit', shell: viaShell }
     );
     if (migrate.status !== 0) {
         throw new Error('❌ pulse-smoke: wrangler d1 migrations apply --local failed');
@@ -180,7 +185,7 @@ function startWorkerd() {
             '--var', 'PULSE_SECRET:smoke-secret',
             '--var', 'PULSE_INSECURE_COOKIES:1'
         ],
-        { cwd: APP_DIR, env, stdio: 'inherit' }
+        { cwd: APP_DIR, env, stdio: 'inherit', shell: viaShell }
     );
 }
 
@@ -198,19 +203,20 @@ try {
     const missing = await fetch(`${BASE}/definitely-not-a-page`, { headers: { 'user-agent': UA } });
     assert(missing.status === 404, 'unknown routes answer a REAL 404');
     // The /api/github proxy is RETIRED (pulse#34) — data rides server
-    // functions. Unauthenticated calls answer the withAuth guard's 401
-    // (probed via the deploy-durable STABLE symbol, never the content hash).
+    // functions. Unauthenticated calls answer the app pipeline's identity
+    // gate with 401 (probed via the deploy-durable STABLE symbol, never the
+    // content hash — real path segments since core 0.15's wire format).
     const proxyGone = await fetch(`${BASE}/api/github/viewer`, { headers: { 'user-agent': UA } });
     assert(proxyGone.status === 404, 'the retired /api/github proxy no longer answers');
     const fnNoAuth = await fetch(
-        `${BASE}/_sigx/fn/${encodeURIComponent('pulse-app/src/server/repos.server.ts#viewerRepos')}`,
+        `${BASE}/_sigx/fn/pulse-app/src/server/repos.server.ts/viewerRepos`,
         {
             method: 'POST',
             headers: { 'content-type': 'application/json', origin: BASE },
             body: JSON.stringify({ args: [] })
         }
     );
-    assert(fnNoAuth.status === 401, 'an unauthenticated server-fn call answers the guard\'s 401');
+    assert(fnNoAuth.status === 401, 'an unauthenticated server-fn call answers the identity gate\'s 401');
 
     // ---- Browser flow ----
     browser = await chromium.launch();
@@ -487,10 +493,16 @@ try {
         `the In focus lane lists every in-flight issue (${expected.sprint.inFlight})`);
     assert(await page.locator('[data-sprint-lane="next"] [data-sprint-row]').count() === expected.sprint.upNext,
         `the Up next lane lists the todo issues (${expected.sprint.upNext})`);
-    const firstFocus = await page.locator('[data-sprint-lane="focus"] [data-sprint-row]').first()
-        .getAttribute('data-sprint-row');
-    assert(firstFocus === String(expected.sprint.firstFocus),
-        `In focus sorts by priority (#${expected.sprint.firstFocus} first, got #${firstFocus})`);
+    // The priority-sort probe only exists when the current cycle HAS
+    // in-flight issues — the pick depends on the real clock, and a cycle
+    // with an empty focus lane made `.first()` hang 30s and fail the smoke
+    // (as it did on CI from the day cycle 25 became current).
+    if (expected.sprint.inFlight > 0) {
+        const firstFocus = await page.locator('[data-sprint-lane="focus"] [data-sprint-row]').first()
+            .getAttribute('data-sprint-row');
+        assert(firstFocus === String(expected.sprint.firstFocus),
+            `In focus sorts by priority (#${expected.sprint.firstFocus} first, got #${firstFocus})`);
+    }
 
     // 5i) Backlog view: flat unstarted list, priority-sorted, mono status
     // column.

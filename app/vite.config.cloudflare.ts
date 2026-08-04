@@ -27,7 +27,9 @@ export default defineConfig({
             }
         }),
         sigxResume(),
-        sigxServer(),
+        // Same serverApp as vite.config.ts: the build injects its import
+        // into virtual:sigx-server-fns, which the worker entry imports.
+        sigxServer({ serverApp: '/src/server-app.ts' }),
         tailwindcss()
     ],
     oxc: {

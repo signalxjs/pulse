@@ -90,7 +90,8 @@ function init(env: Env): Handlers {
 
     // The service registry server functions reach for at request time —
     // the SAME shape server.mjs publishes (src/server/services.server.ts is
-    // the typed accessor); the `use:` chain (withAuth) reads it per call.
+    // the typed accessor); the app authenticator (src/server-app.ts, whose
+    // import the build injects into virtual:sigx-server-fns) reads it per call.
     globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret, secureCookies };
 
     const auth = createAuthHandler({
@@ -128,8 +129,9 @@ export default {
             return handleServerFnRequest(request, {
                 // The build-emitted registry, explicitly passed, never
                 // ambient (the resume-manifest posture). Unauthenticated
-                // calls answer 401 from withAuth in each fn's `use:` chain
-                // — definition-level, so no transport can skip it.
+                // calls answer 401 from the app pipeline's identity gate
+                // (src/server-app.ts) — app-level, so no transport can
+                // skip it, and fail-closed if the app module went missing.
                 resolve: (symbol) => serverFns[symbol]?.() ?? null
             });
         }

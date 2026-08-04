@@ -67,7 +67,8 @@ async function createServer() {
 
     // The service registry server functions reach for at request time
     // (src/server/services.server.ts is the typed accessor). Set BEFORE any
-    // request is served — the `use:` chain (withAuth) reads it per call.
+    // request is served — the app authenticator (src/server-app.ts) reads
+    // it per call.
     globalThis.__PULSE_SERVER__ = { sessions, configStore: createConfigStore(db), etagCache, makeGitHubClient, fixtures, secret, secureCookies };
 
     // The auth surface is a WinterCG fetch handler (Workers-ready); the
