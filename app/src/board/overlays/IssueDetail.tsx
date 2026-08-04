@@ -220,7 +220,7 @@ export const IssueDetail = component<IssueDetailProps>(({ props }) => {
                                 <span class="text-[11.5px] text-tf">Loading issue…</span>
                             </div>
                         ),
-                        error: (err, retry) => (
+                        error: (err, { retry }) => (
                             <div class="flex flex-1 flex-col items-center justify-center gap-3">
                                 <span class="text-[12.5px] text-tm">
                                     Couldn't load the issue: {err instanceof Error ? err.message : String(err)}

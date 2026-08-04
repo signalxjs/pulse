@@ -312,7 +312,7 @@ const BoardPage = component(() => {
                                     <span class="text-[11.5px] text-tf">Loading board…</span>
                                 </div>
                             ),
-                            error: (err, retry) => (
+                            error: (err, { retry }) => (
                                 <div class="flex h-full flex-col items-center justify-center gap-3">
                                     <span class="text-[12.5px] text-tm">
                                         Couldn't load the board: {err instanceof Error ? err.message : String(err)}

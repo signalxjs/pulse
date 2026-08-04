@@ -51,7 +51,10 @@ export default defineConfig(({ command }) => ({
     // into lazily-imported QRL chunks and stamps their components with
     // `__resumeId` — inert for every non-resume component (the board renders
     // and hydrates exactly as before). Sibling to sigxServer(), after sigx().
-    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), sigxResume(), sigxServer(), tailwindcss()],
+    // serverApp: the app-wide pipeline (authenticate + the default
+    // authorization) — dev loads it via the SSR module runner, the build
+    // injects its import into virtual:sigx-server-fns (rfc-server-v4 §3.4).
+    plugins: [sigx({ ssr: { entry: 'src/entry-server.tsx' } }), sigxResume(), sigxServer({ serverApp: '/src/server-app.ts' }), tailwindcss()],
     oxc: {
         jsx: {
             runtime: 'automatic',
