@@ -216,7 +216,7 @@ try {
             body: JSON.stringify({ args: [] })
         }
     );
-    assert(fnNoAuth.status === 401, 'an unauthenticated server-fn call answers the guard\'s 401');
+    assert(fnNoAuth.status === 401, 'an unauthenticated server-fn call answers the identity gate\'s 401');
 
     // ---- Browser flow ----
     browser = await chromium.launch();
