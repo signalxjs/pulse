@@ -7,34 +7,34 @@ settings:
 catalogs:
   default:
     '@sigx/cache':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/cloudflare':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/reactivity':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/resume':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/runtime-core':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/runtime-dom':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/server':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/server-renderer':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     '@sigx/vite':
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
     sigx:
-      specifier: ^0.15.3
+      specifier: ^0.15.0
       version: 0.15.4
 
 importers:
