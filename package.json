@@ -31,10 +31,10 @@
         "branch-protection": "node scripts/apply-branch-protection.mjs"
     },
     "devDependencies": {
-        "@types/node": "^26.1.1",
-        "happy-dom": "^20.10.6",
-        "oxlint": "^1.41.0",
-        "playwright": "^1.61.1",
+        "@types/node": "^26.2.0",
+        "happy-dom": "^20.11.2",
+        "oxlint": "^1.78.0",
+        "playwright": "^1.62.1",
         "typescript": "^7.0.2",
         "vitest": "^4.1.10"
     }
