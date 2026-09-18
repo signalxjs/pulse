@@ -30,7 +30,7 @@ const IssueRef = v.object({ owner: segment, repo: segment, number: v.pipe(v.numb
  *  BoardPage guard redirects to /setup on it). */
 export const getBoard = serverFn({
     input: RepoRef,
-    handler(rq, { owner, repo }): Promise<BoardConfig | null> {
+    handler({ input: { owner, repo } }): Promise<BoardConfig | null> {
         return services().configStore.getBoard(owner, repo);
     }
 });
@@ -43,7 +43,7 @@ const MAX_ISSUE_PAGES = 4;
  *  recently updated first, capped at 400). */
 export const boardIssues = serverFn({
     input: RepoRef,
-    async handler(rq, { owner, repo }): Promise<GitHubIssue[]> {
+    async handler({ rq, input: { owner, repo } }): Promise<GitHubIssue[]> {
         const { gh } = await authed(rq);
         const issues: GitHubIssue[] = [];
         let page: number | null = 1;
@@ -59,7 +59,7 @@ export const boardIssues = serverFn({
 /** All labels defined on the repo (setup selects + chrome tags). */
 export const boardLabels = serverFn({
     input: RepoRef,
-    async handler(rq, { owner, repo }): Promise<GitHubLabel[]> {
+    async handler({ rq, input: { owner, repo } }): Promise<GitHubLabel[]> {
         return (await authed(rq)).gh.repoLabels(owner, repo);
     }
 });
@@ -67,7 +67,7 @@ export const boardLabels = serverFn({
 /** All milestones (open and closed) — the cycle source. */
 export const boardMilestones = serverFn({
     input: RepoRef,
-    async handler(rq, { owner, repo }): Promise<GitHubMilestone[]> {
+    async handler({ rq, input: { owner, repo } }): Promise<GitHubMilestone[]> {
         return (await authed(rq)).gh.repoMilestones(owner, repo);
     }
 });
@@ -75,7 +75,7 @@ export const boardMilestones = serverFn({
 /** Repo collaborators — the team/avatar data ([] without push access). */
 export const boardPeople = serverFn({
     input: RepoRef,
-    async handler(rq, { owner, repo }): Promise<GitHubPerson[]> {
+    async handler({ rq, input: { owner, repo } }): Promise<GitHubPerson[]> {
         return (await authed(rq)).gh.repoCollaborators(owner, repo);
     }
 });
@@ -84,7 +84,7 @@ export const boardPeople = serverFn({
  *  not exist (the panel renders its own not-found state). */
 export const issueDetail = serverFn({
     input: IssueRef,
-    async handler(rq, { owner, repo, number }): Promise<{
+    async handler({ rq, input: { owner, repo, number } }): Promise<{
         issue: GitHubIssue | null;
         timeline: GitHubTimelineEvent[];
     }> {
@@ -104,7 +104,7 @@ export const issueDetail = serverFn({
  */
 export const detectConventions = serverFn({
     input: RepoRef,
-    async handler(rq, { owner, repo }): Promise<DetectedConventions> {
+    async handler({ rq, input: { owner, repo } }): Promise<DetectedConventions> {
         const { gh } = await authed(rq);
         const [labels, milestones] = await Promise.all([
             gh.repoLabels(owner, repo),

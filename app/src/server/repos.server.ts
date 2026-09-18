@@ -14,14 +14,14 @@ import { authed } from './auth.server';
 
 /** Repos the signed-in viewer can access, most recently pushed first. */
 export const viewerRepos = serverFn({
-    async handler(rq): Promise<PulseRepo[]> {
+    async handler({ rq }): Promise<PulseRepo[]> {
         return (await authed(rq)).gh.viewerRepos();
     }
 });
 
 /** Organizations the signed-in viewer belongs to. */
 export const viewerOrgs = serverFn({
-    async handler(rq): Promise<PulseOrg[]> {
+    async handler({ rq }): Promise<PulseOrg[]> {
         return (await authed(rq)).gh.viewerOrgs();
     }
 });

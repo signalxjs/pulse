@@ -13,8 +13,10 @@ declare module 'virtual:sigx-app' {
     export const manifest: ViteManifest;
 }
 
-// The server-fn registry (symbol → lazy import of the wrapped fn) —
-// explicitly passed to handleServerFnRequest, never ambient.
+// The server-fn registry (key → { version, load }: the build's version
+// tag + lazy import of the wrapped fn) — explicitly passed to
+// handleServerFnRequest, never ambient.
 declare module 'virtual:sigx-server-fns' {
-    export const serverFns: Record<string, () => Promise<unknown>>;
+    import type { ServerFnRegistry } from '@sigx/server';
+    export const serverFns: ServerFnRegistry;
 }
