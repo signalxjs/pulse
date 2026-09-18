@@ -39,7 +39,7 @@ export const submitPat = serverFn({
     allowAnonymous: true,
     form: true,
     input: PatFormInput,
-    async handler(rq, input: v.InferOutput<typeof PatFormInput>) {
+    async handler({ rq, input }) {
         const { sessions, secret, fixtures, makeGitHubClient, secureCookies } = services();
         let cookie: string;
         try {

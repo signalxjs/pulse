@@ -127,12 +127,14 @@ export default {
         if (authResponse) return authResponse;
         if (matchesServerFn(request)) {
             return handleServerFnRequest(request, {
-                // The build-emitted registry, explicitly passed, never
-                // ambient (the resume-manifest posture). Unauthenticated
+                // The build-emitted registry (key → { version, load }),
+                // explicitly passed, never ambient (the resume-manifest
+                // posture); the endpoint answers 409 version-skew when a
+                // stale tab's tag differs (rfc-server-v5). Unauthenticated
                 // calls answer 401 from the app pipeline's identity gate
                 // (src/server-app.ts) — app-level, so no transport can
                 // skip it, and fail-closed if the app module went missing.
-                resolve: (symbol) => serverFns[symbol]?.() ?? null
+                functions: serverFns
             });
         }
         return document(request);

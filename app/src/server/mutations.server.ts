@@ -79,7 +79,7 @@ export function duplicateMapping(config: {
  */
 export const saveBoard = serverFn({
     input: BoardConfigInput,
-    async handler(rq, input): Promise<BoardConfig> {
+    async handler({ rq, input }): Promise<BoardConfig> {
         const dup = duplicateMapping(input);
         if (dup) {
             throw new ServerFnError(400, `label "${dup}" is mapped to more than one slot`);
@@ -116,7 +116,7 @@ const CreateMissingLabelsInput = v.object({
  */
 export const createMissingLabels = serverFn({
     input: CreateMissingLabelsInput,
-    async handler(rq, { owner, repo, labels }): Promise<string[]> {
+    async handler({ rq, input: { owner, repo, labels } }): Promise<string[]> {
         const { gh } = await authed(rq);
         const created: string[] = [];
         for (const label of labels) {
@@ -183,7 +183,7 @@ export async function applyMove(
  */
 export const moveIssue = serverFn({
     input: MoveIssueInput,
-    async handler(rq, { owner, repo, number, target }): Promise<GitHubIssue> {
+    async handler({ rq, input: { owner, repo, number, target } }): Promise<GitHubIssue> {
         const { gh } = await authed(rq);
         const config = await services().configStore.getBoard(owner, repo);
         if (!config) {
@@ -208,7 +208,7 @@ const AddCommentInput = v.object({
  */
 export const addComment = serverFn({
     input: AddCommentInput,
-    async handler(rq, { owner, repo, number, body }): Promise<GitHubComment> {
+    async handler({ rq, input: { owner, repo, number, body } }): Promise<GitHubComment> {
         return (await authed(rq)).gh.createComment(owner, repo, number, body);
     },
     invalidates: (input) => [boardKeys.issueDetail(input.owner, input.repo, input.number)]
@@ -283,7 +283,7 @@ export async function applyCreate(
  */
 export const createIssue = serverFn({
     input: NewIssueInput,
-    async handler(rq, input): Promise<GitHubIssue> {
+    async handler({ rq, input }): Promise<GitHubIssue> {
         const { gh } = await authed(rq);
         const config = await services().configStore.getBoard(input.owner, input.repo);
         if (!config) {
